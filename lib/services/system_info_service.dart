@@ -181,14 +181,10 @@ class _LinuxSystemInfo implements SystemInfoService {
 
   String _getLocalIP() {
     try {
-      final interfaces = await NetworkInterface.list();
-      for (final iface in interfaces) {
-        if (iface.name == 'lo' || iface.name.startsWith('lo')) continue;
-        for (final addr in iface.addresses) {
-          if (addr.type == InternetAddressType.IPv4 && !addr.isLoopback) {
-            return '${addr.address} (${iface.name})';
-          }
-        }
+      final result = Process.runSync('hostname', ['-I']);
+      if (result.exitCode == 0) {
+        final ips = result.stdout.toString().trim().split(' ');
+        if (ips.isNotEmpty && ips[0].isNotEmpty) return ips[0];
       }
     } catch (_) {}
     return 'unknown';

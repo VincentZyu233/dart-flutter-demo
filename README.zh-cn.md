@@ -4,6 +4,10 @@
 
 ## 页面介绍
 
+### 0. 系统信息实验室
+
+通过 C++ (Windows) 和 Kotlin (Android) 原生插件及 dart:io (Linux) 获取系统信息。展示 OS、主机名、内核、运行时间、CPU、内存、磁盘和本地 IP。证明 Flutter 无缝桥接原生代码的能力。
+
 ### 1. 经典对话框实验室
 
 像素级还原经典 Win32 对话框。3D 凸起边框、内阴影输入框、蓝底白字标题栏。证明 Flutter 不依赖原生系统组件，可以 100% 还原任何时代的 UI 规范。
@@ -49,7 +53,7 @@ flutter build apk --release
 
 ## CI/CD
 
-GitHub Actions 工作流自动构建发布。提交信息包含 `build action` 或 `build publish` 即触发流水线。详见 [build.zh-cn.md](.github/workflows/build.zh-cn.md)。
+GitHub Actions 工作流自动构建发布。提交信息包含 `build action` 或 `build release` 即触发流水线。详见 [build.zh-cn.md](.github/workflows/build.zh-cn.md)。
 
 ## 技术栈
 

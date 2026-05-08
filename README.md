@@ -4,6 +4,10 @@ A multi-platform PoC app demonstrating Flutter's UI capabilities across Android,
 
 ## Pages
 
+### 0. System Info
+
+Displays system info via native C++ (Windows) and Kotlin (Android) plugins, plus dart:io (Linux). Shows OS, hostname, kernel, uptime, CPU, memory, disk, and local IP. Proves Flutter bridges seamlessly to platform-specific code.
+
 ### 1. Dialog Lab
 
 A pixel-perfect recreation of a classic Win32 dialog box. Demonstrates Flutter's ability to reproduce any UI style — retro 3D borders, inset shadows, and era-accurate color schemes. Proves that Flutter doesn't depend on native system components.
@@ -49,7 +53,7 @@ flutter build apk --release
 
 ## CI/CD
 
-GitHub Actions workflow handles automated builds. Push a commit containing `build action` or `build publish` to trigger the pipeline. See [build.zh-cn.md](.github/workflows/build.zh-cn.md) for details.
+GitHub Actions workflow handles automated builds. Push a commit containing `build action` or `build release` to trigger the pipeline. See [build.md](.github/workflows/build.md) for details.
 
 ## Tech Stack
 
