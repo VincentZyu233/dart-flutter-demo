@@ -88,9 +88,17 @@ jobs:
         shell: bash
         run: |
           python3 -c "
-          import re
+          # Patch flutter_window.h: add GetFlutterViewController() getter
+          with open('windows/runner/flutter_window.h', 'r') as f:
+              h = f.read()
+          h = h.replace(
+              '  virtual ~FlutterWindow();',
+              '  virtual ~FlutterWindow();\n\n  flutter::FlutterViewController* GetFlutterViewController() const {\n    return flutter_view_controller_.get();\n  }'
+          )
+          with open('windows/runner/flutter_window.h', 'w') as f:
+              f.write(h)
 
-          # Patch runner/CMakeLists.txt: add plugin source and include path
+          # Patch runner/CMakeLists.txt: add plugin source and include
           with open('windows/runner/CMakeLists.txt', 'r') as f:
               cmake = f.read()
           cmake = cmake.replace(
@@ -104,58 +112,23 @@ jobs:
           with open('windows/runner/CMakeLists.txt', 'w') as f:
               f.write(cmake)
 
-          # Patch main.cpp: add include and registration
+          # Patch main.cpp: use PluginRegistrarManager
           with open('windows/runner/main.cpp', 'r') as f:
               cpp = f.read()
           cpp = cpp.replace(
               '#include \"flutter_window.h\"',
-              '#include \"flutter_window.h\"\n#include \"plugins/system_info/system_info_plugin.h\"'
+              '#include \"flutter_window.h\"\n#include <flutter/plugin_registrar_manager.h>\n#include \"plugins/system_info/system_info_plugin.h\"'
           )
           cpp = cpp.replace(
               'window.SetQuitOnClose(true);',
-              'window.SetQuitOnClose(true);\n\n  // Register SystemInfo plugin\n  flutter_showcase::SystemInfoPlugin::RegisterWithRegistrar(\n      window.GetRegistrar()->GetPluginRegistrarWindows(\n          \"flutter_showcase/system_info\"));'
+              'window.SetQuitOnClose(true);\n\n  // Register SystemInfo plugin\n  auto registrar_ref = window.GetFlutterViewController()\n      ->GetRegistrarForPlugin(\"flutter_showcase/system_info\");\n  auto registrar = flutter::PluginRegistrarManager::GetInstance()\n      ->GetRegistrar<flutter::PluginRegistrarWindows>(registrar_ref);\n  flutter_showcase::SystemInfoPlugin::RegisterWithRegistrar(registrar);'
           )
           with open('windows/runner/main.cpp', 'w') as f:
               f.write(cpp)
           "
+          echo "=== Patched flutter_window.h ===" && cat windows/runner/flutter_window.h
           echo "=== Patched runner/CMakeLists.txt ===" && cat windows/runner/CMakeLists.txt
-          echo "=== Patched main.cpp ===" && head -35 windows/runner/main.cpp
-
-      - name: Patch Linux runner for SystemInfo plugin
-        if: matrix.platform == 'linux'
-        shell: bash
-        run: |
-          python3 -c "
-          # Patch runner/CMakeLists.txt: add plugin source and include path
-          with open('linux/runner/CMakeLists.txt', 'r') as f:
-              cmake = f.read()
-          cmake = cmake.replace(
-              '\"runner/my_application.cc\"',
-              '\"runner/my_application.cc\"\n  \"runner/plugins/system_info/system_info_plugin.cc\"'
-          )
-          cmake = cmake.replace(
-              'target_include_directories(\${BINARY_NAME} PRIVATE',
-              'target_include_directories(\${BINARY_NAME} PRIVATE\n  \"\${CMAKE_CURRENT_SOURCE_DIR}/plugins/system_info\"'
-          )
-          with open('linux/runner/CMakeLists.txt', 'w') as f:
-              f.write(cmake)
-
-          # Patch main.cc: add includes and registration
-          with open('linux/runner/main.cc', 'r') as f:
-              cc = f.read()
-          cc = cc.replace(
-              '#include \"my_application.h\"',
-              '#include \"my_application.h\"\n#include <flutter/plugin_registrar.h>\n#include \"plugins/system_info/system_info_plugin.h\"'
-          )
-          cc = cc.replace(
-              'g_autoptr(MyApplication) app = my_application_new();',
-              '  flutter_showcase::SystemInfoPlugin::RegisterWithRegistrar(\n      fl_plugin_registrar_get_default());\n\n  g_autoptr(MyApplication) app = my_application_new();'
-          )
-          with open('linux/runner/main.cc', 'w') as f:
-              f.write(cc)
-          "
-          echo "=== Patched runner/CMakeLists.txt ===" && cat linux/runner/CMakeLists.txt
-          echo "=== Patched main.cc ===" && cat linux/runner/main.cc
+          echo "=== Patched main.cpp ===" && head -45 windows/runner/main.cpp
 
       - name: Patch Android for SystemInfo plugin
         if: matrix.platform == 'android'
