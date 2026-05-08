@@ -1,3 +1,6 @@
+// Windows system info: compiled into runner, called via dart:ffi.
+// No Flutter plugin API used — pure Win32 C++ with extern "C" exports.
+
 #include "system_info_plugin.h"
 
 #include <windows.h>
@@ -6,20 +9,15 @@
 #include <psapi.h>
 #include <sysinfoapi.h>
 
-#include <flutter/method_channel.h>
-#include <flutter/plugin_registrar_windows.h>
-#include <flutter/standard_method_codec.h>
-
 #include <codecvt>
 #include <locale>
-#include <memory>
 #include <string>
 #include <sstream>
+#include <cstring>
+#include <cstdlib>
 
 #pragma comment(lib, "psapi.lib")
 #pragma comment(lib, "iphlpapi.lib")
-
-namespace flutter_showcase {
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -39,10 +37,29 @@ static std::string GetenvOrDefault(const char* name, const char* def = "") {
   return (len > 0 && len < sizeof(buf)) ? std::string(buf, len) : def;
 }
 
+static std::string EscapeJson(const std::string& s) {
+  std::string r;
+  r.reserve(s.size());
+  for (char c : s) {
+    switch (c) {
+      case '"': r += "\\\""; break;
+      case '\\': r += "\\\\"; break;
+      case '\n': r += "\\n"; break;
+      case '\r': r += "\\r"; break;
+      case '\t': r += "\\t"; break;
+      default: r += c;
+    }
+  }
+  return r;
+}
+
+static std::string ToJson(const std::string& key, const std::string& value) {
+  return "{\"" + EscapeJson(key) + "\":\"" + EscapeJson(value) + "\"}";
+}
+
 // ── OS Info ──────────────────────────────────────────────────────────────────
 
 static std::string GetOSVersion() {
-  // Use RtlGetVersion for accurate version (not affected by manifest)
   using RtlGetVersion = LONG(WINAPI*)(PRTL_OSVERSIONINFOW);
   auto rtlGetVersion = (RtlGetVersion)GetProcAddress(
       GetModuleHandleW(L"ntdll.dll"), "RtlGetVersion");
@@ -53,7 +70,6 @@ static std::string GetOSVersion() {
   osvi.dwOSVersionInfoSize = sizeof(osvi);
   if (rtlGetVersion(&osvi) != 0) return "Windows (unknown version)";
 
-  // Detect edition
   std::string edition = "Windows";
   HKEY hKey;
   if (RegOpenKeyExW(HKEY_LOCAL_MACHINE,
@@ -68,7 +84,6 @@ static std::string GetOSVersion() {
     RegCloseKey(hKey);
   }
 
-  // Architecture
   SYSTEM_INFO si;
   GetSystemInfo(&si);
   std::string arch;
@@ -135,7 +150,6 @@ static std::string GetCPUInfo() {
   GetSystemInfo(&si);
   DWORD cores = si.dwNumberOfProcessors;
 
-  // Get max MHz from registry
   DWORD maxMHz = 0;
   if (RegOpenKeyExW(HKEY_LOCAL_MACHINE,
       L"HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0", 0,
@@ -185,7 +199,6 @@ static std::string GetDiskInfo(const std::string& drive) {
   double usedGiB = (totalBytes.QuadPart - availBytes.QuadPart) / (1024.0 * 1024.0 * 1024.0);
   int usedPct = (int)((1.0 - (double)availBytes.QuadPart / totalBytes.QuadPart) * 100);
 
-  // Get filesystem type
   wchar_t fsName[MAX_PATH + 1] = {};
   GetVolumeInformationW(wdrive.c_str(), nullptr, 0, nullptr, nullptr,
                         nullptr, fsName, sizeof(fsName) / sizeof(fsName[0]));
@@ -232,59 +245,37 @@ static std::string GetLocale() {
   return "unknown";
 }
 
-// ── Plugin Implementation ────────────────────────────────────────────────────
+// ── JSON Builder ─────────────────────────────────────────────────────────────
 
-void SystemInfoPlugin::RegisterWithRegistrar(
-    flutter::PluginRegistrarWindows* registrar) {
-  auto channel = std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
-      registrar->messenger(), "flutter_showcase/system_info",
-      &flutter::StandardMethodCodec::GetInstance());
-
-  auto plugin = std::make_unique<SystemInfoPlugin>();
-
-  channel->SetMethodCallHandler(
-      [plugin_ptr = plugin.get()](
-          const flutter::MethodCall<flutter::EncodableValue>& call,
-          std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
-        plugin_ptr->HandleMethodCall(call, std::move(result));
-      });
-
-  registrar->AddPlugin(std::move(plugin));
+static std::string BuildInfoJson() {
+  std::ostringstream json;
+  json << "{";
+  json << "\"OS\":\"" << EscapeJson(GetOSVersion()) << "\",";
+  json << "\"Host\":\"" << EscapeJson(GetHostname()) << "\",";
+  json << "\"Kernel\":\"" << EscapeJson(GetKernelVersion()) << "\",";
+  json << "\"Uptime\":\"" << EscapeJson(GetUptime()) << "\",";
+  json << "\"CPU\":\"" << EscapeJson(GetCPUInfo()) << "\",";
+  json << "\"Memory\":\"" << EscapeJson(GetMemoryInfo()) << "\",";
+  json << "\"Disk (C:\\)\":\"" << EscapeJson(GetDiskInfo("C:\\")) << "\",";
+  json << "\"Local IP\":\"" << EscapeJson(GetLocalIP()) << "\",";
+  json << "\"Locale\":\"" << EscapeJson(GetLocale()) << "\"";
+  json << "}";
+  return json.str();
 }
 
-SystemInfoPlugin::SystemInfoPlugin() {}
+// ── Exported C API (called via dart:ffi) ─────────────────────────────────────
 
-SystemInfoPlugin::~SystemInfoPlugin() {}
+extern "C" {
 
-void SystemInfoPlugin::HandleMethodCall(
-    const flutter::MethodCall<flutter::EncodableValue>& method_call,
-    std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
-  if (method_call.method_name() == "getInfo") {
-    flutter::EncodableMap map;
-
-    map[flutter::EncodableValue("OS")] =
-        flutter::EncodableValue(GetOSVersion());
-    map[flutter::EncodableValue("Host")] =
-        flutter::EncodableValue(GetHostname());
-    map[flutter::EncodableValue("Kernel")] =
-        flutter::EncodableValue(GetKernelVersion());
-    map[flutter::EncodableValue("Uptime")] =
-        flutter::EncodableValue(GetUptime());
-    map[flutter::EncodableValue("CPU")] =
-        flutter::EncodableValue(GetCPUInfo());
-    map[flutter::EncodableValue("Memory")] =
-        flutter::EncodableValue(GetMemoryInfo());
-    map[flutter::EncodableValue("Disk (C:\\)")] =
-        flutter::EncodableValue(GetDiskInfo("C:\\"));
-    map[flutter::EncodableValue("Local IP")] =
-        flutter::EncodableValue(GetLocalIP());
-    map[flutter::EncodableValue("Locale")] =
-        flutter::EncodableValue(GetLocale());
-
-    result->Success(flutter::EncodableValue(std::move(map)));
-  } else {
-    result->NotImplemented();
-  }
+__declspec(dllexport) char* GetSystemInfoJson() {
+  std::string info = BuildInfoJson();
+  char* result = (char*)malloc(info.size() + 1);
+  memcpy(result, info.c_str(), info.size() + 1);
+  return result;
 }
 
-}  // namespace flutter_showcase
+__declspec(dllexport) void FreeSystemInfoJson(char* str) {
+  free(str);
+}
+
+}  // extern "C"

@@ -1,7 +1,12 @@
+import 'dart:convert';
+import 'dart:ffi';
 import 'dart:io';
-import 'dart:math';
 
 import 'package:flutter/services.dart';
+
+// FFI type defs for Windows C++ exports
+typedef _GetSystemInfoJsonC = Pointer<Utf8> Function();
+typedef _FreeSystemInfoJsonC = Void Function(Pointer<Utf8>);
 
 abstract class SystemInfoService {
   Future<Map<String, String>> getInfo();
@@ -14,15 +19,25 @@ SystemInfoService createSystemInfoService() {
   throw UnsupportedError('Platform not supported');
 }
 
-// ── Windows (C++ MethodChannel) ──────────────────────────────────────────────
+// ── Windows (C++ FFI) ────────────────────────────────────────────────────────
 
 class _WindowsSystemInfo implements SystemInfoService {
-  static const _channel = MethodChannel('flutter_showcase/system_info');
-
   @override
   Future<Map<String, String>> getInfo() async {
-    final result = await _channel.invokeMapMethod<String, String>('getInfo');
-    return result ?? {};
+    final dylib = DynamicLibrary.process();
+    final getJson = dylib.lookupFunction<_GetSystemInfoJsonC, _GetSystemInfoJsonC>('GetSystemInfoJson');
+    final freeJson = dylib.lookupFunction<_FreeSystemInfoJsonC, _FreeSystemInfoJsonC>('FreeSystemInfoJson');
+
+    final ptr = getJson();
+    final jsonStr = ptr.toDartString();
+    freeJson(ptr);
+
+    try {
+      final decoded = jsonDecode(jsonStr) as Map<String, dynamic>;
+      return decoded.map((k, v) => MapEntry(k, v.toString()));
+    } catch (_) {
+      return {};
+    }
   }
 }
 

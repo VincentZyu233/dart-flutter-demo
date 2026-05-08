@@ -88,16 +88,6 @@ jobs:
         shell: bash
         run: |
           python3 -c "
-          # Patch flutter_window.h: add GetFlutterViewController() getter
-          with open('windows/runner/flutter_window.h', 'r') as f:
-              h = f.read()
-          h = h.replace(
-              '  virtual ~FlutterWindow();',
-              '  virtual ~FlutterWindow();\n\n  flutter::FlutterViewController* GetFlutterViewController() const {\n    return flutter_view_controller_.get();\n  }'
-          )
-          with open('windows/runner/flutter_window.h', 'w') as f:
-              f.write(h)
-
           # Patch runner/CMakeLists.txt: add plugin source and include
           with open('windows/runner/CMakeLists.txt', 'r') as f:
               cmake = f.read()
@@ -111,24 +101,7 @@ jobs:
           )
           with open('windows/runner/CMakeLists.txt', 'w') as f:
               f.write(cmake)
-
-          # Patch main.cpp: use PluginRegistrarManager
-          with open('windows/runner/main.cpp', 'r') as f:
-              cpp = f.read()
-          cpp = cpp.replace(
-              '#include \"flutter_window.h\"',
-              '#include \"flutter_window.h\"\n#include <flutter/plugin_registrar_manager.h>\n#include \"plugins/system_info/system_info_plugin.h\"'
-          )
-          cpp = cpp.replace(
-              'window.SetQuitOnClose(true);',
-              'window.SetQuitOnClose(true);\n\n  // Register SystemInfo plugin\n  auto registrar_ref = window.GetFlutterViewController()\n      ->GetRegistrarForPlugin(\"flutter_showcase/system_info\");\n  auto registrar = flutter::PluginRegistrarManager::GetInstance()\n      ->GetRegistrar<flutter::PluginRegistrarWindows>(registrar_ref);\n  flutter_showcase::SystemInfoPlugin::RegisterWithRegistrar(registrar);'
-          )
-          with open('windows/runner/main.cpp', 'w') as f:
-              f.write(cpp)
           "
-          echo "=== Patched flutter_window.h ===" && cat windows/runner/flutter_window.h
-          echo "=== Patched runner/CMakeLists.txt ===" && cat windows/runner/CMakeLists.txt
-          echo "=== Patched main.cpp ===" && head -45 windows/runner/main.cpp
 
       - name: Patch Android for SystemInfo plugin
         if: matrix.platform == 'android'

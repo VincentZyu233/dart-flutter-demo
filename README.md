@@ -1,6 +1,6 @@
 # Flutter Showcase
 
-A multi-platform PoC app demonstrating Flutter's UI capabilities across Android, Windows, and Linux.
+A multi-platform PoC(Proof of Concept) app demonstrating Flutter's UI capabilities across Android, Windows, and Linux.
 
 ## Pages
 

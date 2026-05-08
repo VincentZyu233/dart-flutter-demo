@@ -1,6 +1,6 @@
 # Flutter Showcase
 
-一个跨平台 Flutter UI 能力展示 PoC 应用，支持 Android、Windows 和 Linux。
+一个跨平台 Flutter UI 能力展示 PoC(Proof of Concept) 应用，支持 Android、Windows 和 Linux。
 
 ## 页面介绍
 
