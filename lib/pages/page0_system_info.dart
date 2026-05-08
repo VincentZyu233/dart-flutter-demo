@@ -16,6 +16,18 @@ class _Page0SystemInfoState extends State<Page0SystemInfo> {
   bool _loading = false;
   String? _error;
 
+  static const List<String> _keys = [
+    'OS',
+    'Host',
+    'Kernel',
+    'Uptime',
+    'CPU',
+    'Memory',
+    'Disk (C:\\)',
+    'Local IP',
+    'Locale',
+  ];
+
   @override
   void initState() {
     super.initState();
@@ -23,10 +35,10 @@ class _Page0SystemInfoState extends State<Page0SystemInfo> {
     WidgetsBinding.instance.addPostFrameCallback((_) => _loadInfo());
   }
 
-  Future<void> _loadInfo() async {
+  Future<void> _loadInfo({bool forceRefresh = false}) async {
     if (!mounted) return;
     try {
-      final info = await _service.getInfo();
+      final info = await _service.getInfo(forceRefresh: forceRefresh);
       if (mounted) setState(() { _info = info; _loading = false; _error = null; });
     } catch (e) {
       if (mounted) setState(() { _error = e.toString(); _loading = false; });
@@ -35,58 +47,45 @@ class _Page0SystemInfoState extends State<Page0SystemInfo> {
 
   void _refresh() {
     setState(() { _loading = true; _error = null; });
-    _loadInfo();
+    _loadInfo(forceRefresh: true);
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final entries = _info.entries.toList();
 
     return AnimatedPageWrapper(
-      child: SizedBox.expand(
-        child: SingleChildScrollView(
+      child: Scrollbar(
+        child: ListView(
           physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
           padding: const EdgeInsets.only(left: 16, right: 16, top: 12, bottom: 80),
-          child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _buildHeader(theme),
-                const SizedBox(height: 2),
-                _buildSeparator(theme),
-                const SizedBox(height: 8),
-
-                // Error banner
-                if (_error != null && !_loading)
-                  _buildErrorBanner(theme),
-
-                // Loading skeleton or data rows
-                if (_loading && entries.isEmpty)
-                  for (int i = 0; i < 9; i++)
-                    _buildSkeletonRow(theme, i)
-                else
-                  for (int i = 0; i < entries.length; i++)
-                    StaggeredItem(
-                      index: i,
-                      child: _InfoRow(
-                        label: entries[i].key,
-                        value: entries[i].value,
-                      ),
-                    ),
-
-                const SizedBox(height: 16),
-                FilledButton.tonalIcon(
-                  onPressed: _loading ? null : _refresh,
-                  icon: _loading
-                      ? const SizedBox(width: 18, height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2))
-                      : const Icon(Icons.refresh),
-                  label: Text(_loading ? 'Loading...' : 'Refresh'),
-                ),
-              ],
+          children: [
+            _buildHeader(theme),
+            const SizedBox(height: 2),
+            _buildSeparator(theme),
+            const SizedBox(height: 8),
+            if (_error != null && !_loading) _buildErrorBanner(theme),
+            for (final key in _keys)
+              _InfoRow(
+                label: key,
+                value: _info[key],
+                loading: _loading && !_info.containsKey(key),
+              ),
+            const SizedBox(height: 16),
+            FilledButton.tonalIcon(
+              onPressed: _loading ? null : _refresh,
+              icon: _loading
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.refresh),
+              label: Text(_loading ? 'Loading...' : 'Refresh'),
             ),
-          ),
+          ],
         ),
+      ),
     );
   }
 
@@ -149,43 +148,18 @@ class _Page0SystemInfoState extends State<Page0SystemInfo> {
     );
   }
 
-  Widget _buildSkeletonRow(ThemeData theme, int index) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 7),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 110,
-            child: Container(
-              height: 12,
-              decoration: BoxDecoration(
-                color: theme.colorScheme.onSurface.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(4),
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Container(
-              height: 12,
-              decoration: BoxDecoration(
-                color: theme.colorScheme.onSurface.withOpacity(0.06),
-                borderRadius: BorderRadius.circular(4),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 class _InfoRow extends StatelessWidget {
   final String label;
-  final String value;
+  final String? value;
+  final bool loading;
 
-  const _InfoRow({required this.label, required this.value});
+  const _InfoRow({
+    required this.label,
+    required this.value,
+    required this.loading,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -209,15 +183,37 @@ class _InfoRow extends StatelessWidget {
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: Text(
-              value,
-              style: TextStyle(
-                fontFamily: 'JetBrainsMono',
-                fontSize: 12,
-                color: theme.colorScheme.onSurface,
-                height: 1.4,
-              ),
-            ),
+            child: loading
+                ? Row(
+                    children: [
+                      SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: theme.colorScheme.primary,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Text(
+                        'Loading...',
+                        style: TextStyle(
+                          fontFamily: 'JetBrainsMono',
+                          fontSize: 12,
+                          color: theme.colorScheme.onSurface.withOpacity(0.55),
+                        ),
+                      ),
+                    ],
+                  )
+                : Text(
+                    value ?? '-',
+                    style: TextStyle(
+                      fontFamily: 'JetBrainsMono',
+                      fontSize: 12,
+                      color: theme.colorScheme.onSurface,
+                      height: 1.4,
+                    ),
+                  ),
           ),
         ],
       ),

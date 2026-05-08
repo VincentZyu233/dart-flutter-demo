@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:ffi';
 import 'dart:io';
+import 'dart:isolate';
 
 import 'package:flutter/services.dart';
 
@@ -22,7 +23,7 @@ String _ptrToString(Pointer<Uint8> ptr) {
 }
 
 abstract class SystemInfoService {
-  Future<Map<String, String>> getInfo();
+  Future<Map<String, String>> getInfo({bool forceRefresh = false});
 }
 
 SystemInfoService createSystemInfoService() {
@@ -37,14 +38,23 @@ SystemInfoService createSystemInfoService() {
 
 class _IOSSystemInfo implements SystemInfoService {
   static const _channel = MethodChannel('flutter_showcase/system_info');
+  static Map<String, String>? _cachedInfo;
 
   @override
-  Future<Map<String, String>> getInfo() async {
+  Future<Map<String, String>> getInfo({bool forceRefresh = false}) async {
+    if (!forceRefresh && _cachedInfo != null) {
+      return Map<String, String>.from(_cachedInfo!);
+    }
     try {
       final result = await _channel.invokeMapMethod<String, String>('getInfo');
-      if (result != null) return result;
+      if (result != null) {
+        _cachedInfo = Map<String, String>.from(result);
+        return Map<String, String>.from(result);
+      }
     } catch (_) {}
-    return _getInfoFallback();
+    final fallback = _getInfoFallback();
+    _cachedInfo = Map<String, String>.from(fallback);
+    return fallback;
   }
 
   Map<String, String> _getInfoFallback() {
@@ -65,8 +75,35 @@ class _IOSSystemInfo implements SystemInfoService {
 // ── Windows (C++ FFI with dart:io fallback) ──────────────────────────────────
 
 class _WindowsSystemInfo implements SystemInfoService {
+  static Map<String, String>? _cachedInfo;
+  static Future<Map<String, String>>? _inFlight;
+
   @override
-  Future<Map<String, String>> getInfo() async {
+  Future<Map<String, String>> getInfo({bool forceRefresh = false}) {
+    if (!forceRefresh && _cachedInfo != null) {
+      return Future.value(Map<String, String>.from(_cachedInfo!));
+    }
+
+    if (!forceRefresh && _inFlight != null) {
+      return _inFlight!;
+    }
+
+    late final Future<Map<String, String>> future;
+    future = Isolate.run(_getInfoSync).then((result) {
+      _cachedInfo = Map<String, String>.from(result);
+      return Map<String, String>.from(result);
+    });
+
+    _inFlight = future;
+    future.whenComplete(() {
+      if (identical(_inFlight, future)) {
+        _inFlight = null;
+      }
+    });
+    return future;
+  }
+
+  static Map<String, String> _getInfoSync() {
     try {
       final dylib = DynamicLibrary.process();
       final getJson = dylib.lookupFunction<_GetSystemInfoJsonNative, _GetSystemInfoJsonDart>('GetSystemInfoJson');
@@ -83,7 +120,7 @@ class _WindowsSystemInfo implements SystemInfoService {
     }
   }
 
-  Map<String, String> _getInfoFallback() {
+  static Map<String, String> _getInfoFallback() {
     final result = <String, String>{};
     result['OS'] = Platform.operatingSystemVersion;
     result['Host'] = Platform.localHostname;
@@ -284,8 +321,35 @@ class _WindowsSystemInfo implements SystemInfoService {
 // ── Linux (dart:io) ──────────────────────────────────────────────────────────
 
 class _LinuxSystemInfo implements SystemInfoService {
+  static Map<String, String>? _cachedInfo;
+  static Future<Map<String, String>>? _inFlight;
+
   @override
-  Future<Map<String, String>> getInfo() async {
+  Future<Map<String, String>> getInfo({bool forceRefresh = false}) {
+    if (!forceRefresh && _cachedInfo != null) {
+      return Future.value(Map<String, String>.from(_cachedInfo!));
+    }
+
+    if (!forceRefresh && _inFlight != null) {
+      return _inFlight!;
+    }
+
+    late final Future<Map<String, String>> future;
+    future = Isolate.run(_getInfoSync).then((result) {
+      _cachedInfo = Map<String, String>.from(result);
+      return Map<String, String>.from(result);
+    });
+
+    _inFlight = future;
+    future.whenComplete(() {
+      if (identical(_inFlight, future)) {
+        _inFlight = null;
+      }
+    });
+    return future;
+  }
+
+  static Map<String, String> _getInfoSync() {
     return {
       'OS': _getOS(),
       'Host': _getHostname(),
@@ -299,7 +363,7 @@ class _LinuxSystemInfo implements SystemInfoService {
     };
   }
 
-  String _readFile(String path) {
+  static String _readFile(String path) {
     try {
       return File(path).readAsStringSync().trim();
     } catch (_) {
@@ -307,7 +371,7 @@ class _LinuxSystemInfo implements SystemInfoService {
     }
   }
 
-  String _readFirstLine(String path) {
+  static String _readFirstLine(String path) {
     try {
       final lines = File(path).readAsLinesSync();
       return lines.isNotEmpty ? lines.first : 'unknown';
@@ -316,7 +380,7 @@ class _LinuxSystemInfo implements SystemInfoService {
     }
   }
 
-  String _getOS() {
+  static String _getOS() {
     final osRelease = _readFile('/etc/os-release');
     var match = RegExp(r'PRETTY_NAME="(.+)"').firstMatch(osRelease);
     if (match != null) return match.group(1)!;
@@ -329,7 +393,7 @@ class _LinuxSystemInfo implements SystemInfoService {
     return 'Linux (unknown)';
   }
 
-  String _getHostname() {
+  static String _getHostname() {
     try {
       return Platform.localHostname;
     } catch (_) {
@@ -337,7 +401,7 @@ class _LinuxSystemInfo implements SystemInfoService {
     }
   }
 
-  String _getKernel() {
+  static String _getKernel() {
     final version = _readFirstLine('/proc/version');
     final parts = version.split(' ');
     if (parts.length >= 3) {
@@ -346,7 +410,7 @@ class _LinuxSystemInfo implements SystemInfoService {
     return version;
   }
 
-  String _getUptime() {
+  static String _getUptime() {
     final content = _readFirstLine('/proc/uptime');
     final seconds = double.tryParse(content.split(' ').first) ?? 0;
     final total = seconds.toInt();
@@ -359,7 +423,7 @@ class _LinuxSystemInfo implements SystemInfoService {
     return buf.toString();
   }
 
-  String _getCPU() {
+  static String _getCPU() {
     final content = _readFile('/proc/cpuinfo');
     var modelName = 'Unknown CPU';
     var cores = 0;
@@ -382,7 +446,7 @@ class _LinuxSystemInfo implements SystemInfoService {
     return result;
   }
 
-  String _getMemory() {
+  static String _getMemory() {
     final content = _readFile('/proc/meminfo');
     var memTotal = 0;
     var memAvail = 0;
@@ -407,7 +471,7 @@ class _LinuxSystemInfo implements SystemInfoService {
     return '${usedGiB.toStringAsFixed(2)} GiB / ${totalGiB.toStringAsFixed(2)} GiB ($pct%)';
   }
 
-  String _getDisk(String mount) {
+  static String _getDisk(String mount) {
     try {
       final stat = FileStat.statSync(mount);
       final total = stat.size;
@@ -434,7 +498,7 @@ class _LinuxSystemInfo implements SystemInfoService {
     return '$mount: unknown';
   }
 
-  String _getLocalIP() {
+  static String _getLocalIP() {
     try {
       final result = Process.runSync('hostname', ['-I']);
       if (result.exitCode == 0) {
@@ -445,7 +509,7 @@ class _LinuxSystemInfo implements SystemInfoService {
     return 'unknown';
   }
 
-  String _getLocale() {
+  static String _getLocale() {
     try {
       return Platform.localeName;
     } catch (_) {
@@ -458,10 +522,16 @@ class _LinuxSystemInfo implements SystemInfoService {
 
 class _AndroidSystemInfo implements SystemInfoService {
   static const _channel = MethodChannel('flutter_showcase/system_info');
+  static Map<String, String>? _cachedInfo;
 
   @override
-  Future<Map<String, String>> getInfo() async {
+  Future<Map<String, String>> getInfo({bool forceRefresh = false}) async {
+    if (!forceRefresh && _cachedInfo != null) {
+      return Map<String, String>.from(_cachedInfo!);
+    }
     final result = await _channel.invokeMapMethod<String, String>('getInfo');
-    return result ?? {};
+    final info = result ?? {};
+    _cachedInfo = Map<String, String>.from(info);
+    return Map<String, String>.from(info);
   }
 }
