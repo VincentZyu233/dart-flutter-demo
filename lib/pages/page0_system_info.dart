@@ -15,6 +15,8 @@ class _Page0SystemInfoState extends State<Page0SystemInfo> {
   Map<String, String> _info = {};
   bool _loading = false;
   String? _error;
+  final Stopwatch _loadStopwatch = Stopwatch();
+  int? _loadDurationMs;
 
   static const List<String> _keys = [
     'OS',
@@ -32,6 +34,7 @@ class _Page0SystemInfoState extends State<Page0SystemInfo> {
   void initState() {
     super.initState();
     _loading = true;
+    _loadStopwatch.start();
     WidgetsBinding.instance.addPostFrameCallback((_) => _loadInfo());
   }
 
@@ -39,14 +42,36 @@ class _Page0SystemInfoState extends State<Page0SystemInfo> {
     if (!mounted) return;
     try {
       final info = await _service.getInfo(forceRefresh: forceRefresh);
-      if (mounted) setState(() { _info = info; _loading = false; _error = null; });
+      if (mounted) {
+        setState(() {
+          _info = info;
+          _loading = false;
+          _error = null;
+          _loadStopwatch.stop();
+          _loadDurationMs = _loadStopwatch.elapsedMilliseconds;
+        });
+      }
     } catch (e) {
-      if (mounted) setState(() { _error = e.toString(); _loading = false; });
+      if (mounted) {
+        setState(() {
+          _error = e.toString();
+          _loading = false;
+          _loadStopwatch.stop();
+          _loadDurationMs = _loadStopwatch.elapsedMilliseconds;
+        });
+      }
     }
   }
 
   void _refresh() {
-    setState(() { _loading = true; _error = null; });
+    setState(() {
+      _loading = true;
+      _error = null;
+      _loadDurationMs = null;
+      _loadStopwatch
+        ..reset()
+        ..start();
+    });
     _loadInfo(forceRefresh: true);
   }
 
@@ -64,6 +89,18 @@ class _Page0SystemInfoState extends State<Page0SystemInfo> {
             const SizedBox(height: 2),
             _buildSeparator(theme),
             const SizedBox(height: 8),
+            if (_loadDurationMs != null && !_loading)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Text(
+                  'Loaded in ${_loadDurationMs} ms',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: theme.colorScheme.onSurface.withOpacity(0.5),
+                    fontFamily: 'JetBrainsMono',
+                  ),
+                ),
+              ),
             if (_error != null && !_loading) _buildErrorBanner(theme),
             for (final key in _keys)
               _InfoRow(
@@ -170,13 +207,13 @@ class _InfoRow extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            width: 110,
+            width: 115.5,
             child: Text(
               label,
               style: TextStyle(
                 fontFamily: 'JetBrainsMono',
                 fontWeight: FontWeight.bold,
-                fontSize: 12,
+                fontSize: 14.4,
                 color: theme.colorScheme.primary,
               ),
             ),
@@ -199,7 +236,7 @@ class _InfoRow extends StatelessWidget {
                         'Loading...',
                         style: TextStyle(
                           fontFamily: 'JetBrainsMono',
-                          fontSize: 12,
+                          fontSize: 15.6,
                           color: theme.colorScheme.onSurface.withOpacity(0.55),
                         ),
                       ),
@@ -209,7 +246,7 @@ class _InfoRow extends StatelessWidget {
                     value ?? '-',
                     style: TextStyle(
                       fontFamily: 'JetBrainsMono',
-                      fontSize: 12,
+                      fontSize: 15.6,
                       color: theme.colorScheme.onSurface,
                       height: 1.4,
                     ),

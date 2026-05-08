@@ -256,7 +256,7 @@ static std::string BuildInfoJson() {
   json << "\"Uptime\":\"" << EscapeJson(GetUptime()) << "\",";
   json << "\"CPU\":\"" << EscapeJson(GetCPUInfo()) << "\",";
   json << "\"Memory\":\"" << EscapeJson(GetMemoryInfo()) << "\",";
-  json << "\"Disk (C:\\)\":\"" << EscapeJson(GetDiskInfo("C:\\")) << "\",";
+  json << "\"Disk (C:\\\\)\":\"" << EscapeJson(GetDiskInfo("C:\\")) << "\",";
   json << "\"Local IP\":\"" << EscapeJson(GetLocalIP()) << "\",";
   json << "\"Locale\":\"" << EscapeJson(GetLocale()) << "\"";
   json << "}";

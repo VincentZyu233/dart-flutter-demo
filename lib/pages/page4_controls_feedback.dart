@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import '../widgets/animated_page.dart';
 
-class Page7ControlsFeedback extends StatefulWidget {
-  const Page7ControlsFeedback({super.key});
+class Page4ControlsFeedback extends StatefulWidget {
+  const Page4ControlsFeedback({super.key});
 
   @override
-  State<Page7ControlsFeedback> createState() => _Page7ControlsFeedbackState();
+  State<Page4ControlsFeedback> createState() => _Page4ControlsFeedbackState();
 }
 
-class _Page7ControlsFeedbackState extends State<Page7ControlsFeedback>
+class _Page4ControlsFeedbackState extends State<Page4ControlsFeedback>
     with SingleTickerProviderStateMixin {
   // Radio
   int _radioValue = 0;
