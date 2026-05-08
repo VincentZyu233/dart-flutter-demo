@@ -194,15 +194,21 @@ jobs:
           with open('ios/Runner/AppDelegate.swift', 'w') as f:
               f.write(swift)
           "
-          echo "=== Patched AppDelegate.swift ===" && cat ios/Runner/AppDelegate.swift
+          # Override code signing via xcconfig (more reliable than sed on pbxproj)
+          cat > ios/Flutter/Release.xcconfig << 'XCEOF'
+          #include "Pods/Target Support Files/Pods-Runner/Pods-Runner.release.xcconfig"
+          #include "Generated.xcconfig"
+          CODE_SIGN_IDENTITY=
+          CODE_SIGNING_REQUIRED=NO
+          CODE_SIGNING_ALLOWED=NO
+          DEVELOPMENT_TEAM=
+          PROVISIONING_PROFILE_SPECIFIER=
+          XCEOF
+          echo "=== Patched AppDelegate.swift ===" && head -5 ios/Runner/AppDelegate.swift
 
       - name: Build (iOS IPA - no codesign)
         if: matrix.platform == 'ios'
         run: |
-          # Patch Xcode project to disable signing and auto-assign bundle ID
-          sed -i '' 's/DEVELOPMENT_TEAM = .*/DEVELOPMENT_TEAM = "";/g' ios/Runner.xcodeproj/project.pbxproj || true
-          sed -i '' 's/CODE_SIGN_IDENTITY = .*/CODE_SIGN_IDENTITY = "";/g' ios/Runner.xcodeproj/project.pbxproj || true
-          sed -i '' 's/CODE_SIGN_STYLE = .*/CODE_SIGN_STYLE = Manual;/g' ios/Runner.xcodeproj/project.pbxproj || true
           # Build Flutter app without codesign
           flutter build ios --release --no-codesign
           # Package IPA manually
