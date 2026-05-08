@@ -15,7 +15,7 @@
 
 ## Commit 信息规范
 
-**只有 commit 信息包含 `build action` 或 `build publish` 时才会触发完整构建。**
+**只有 commit 信息包含 `build action` 或 `build release` 时才会触发完整构建。**
 
 否则工作流将跳过构建并显示：
 ```
@@ -27,7 +27,7 @@
 
 ```bash
 git commit -m "feat: build action for Windows and Android"
-git commit -m "chore: build publish release v1.0"
+git commit -m "chore: build release v1.0"
 ```
 
 ### 非法的 Commit 信息（将跳过构建）
@@ -58,9 +58,9 @@ git commit -m "fix typo"
 
 | 平台 | Runner | 构建命令 | 产物 |
 |------|--------|----------|------|
-| Windows x64 | `windows-latest` | `flutter build windows --release` | `flutter-showcase-windows-x64.zip` |
-| Linux x64 | `ubuntu-latest` | `flutter build linux --release` | `flutter-showcase-linux-x64.tar.gz` |
-| Android | `ubuntu-latest` | `flutter build apk --release` | `flutter-showcase-android.apk` |
+| Windows x64 | `windows-latest` | `flutter build windows --release` | `flutter-showcase-windows-x64-v<version>.zip` |
+| Linux x64 | `ubuntu-latest` | `flutter build linux --release` | `flutter-showcase-linux-x64-v<version>.tar.gz` |
+| Android | `ubuntu-latest` | `flutter build apk --release` | `flutter-showcase-android-v<version>.apk` |
 
 **执行步骤：**
 1. 检出代码
@@ -77,10 +77,16 @@ git commit -m "fix typo"
 sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev
 ```
 
-**版本标签格式：**
+**Release Tag 格式：**
 ```
-<提交哈希前7位>-<时间戳>
-示例：abc1234-20260508-143000
+v<pubspec版本号>
+示例：v0.0.1-alpha.1
+```
+
+**产物文件名格式：**
+```
+flutter-showcase-<平台>-v<pubspec版本号>.<扩展名>
+示例：flutter-showcase-windows-x64-v0.0.1-alpha.1.zip
 ```
 
 ### 阶段三：发布 Release
@@ -93,16 +99,17 @@ sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev
 **执行步骤：**
 1. 检出代码
 2. 下载所有构建产物
-3. 创建 Draft Release（草稿模式，需手动发布）
-4. 上传 Windows/Linux/Android 产物
+3. 打包产物并添加版本号文件名
+4. 创建 Draft Release（草稿模式，需手动发布）
+5. 上传 Windows/Linux/Android 产物
 
 **Release 内容：**
 
 | 文件 | 说明 |
 |------|------|
-| `flutter-showcase-windows-x64.zip` | Windows 可执行文件压缩包 |
-| `flutter-showcase-linux-x64.tar.gz` | Linux 可执行文件压缩包 |
-| `flutter-showcase-android.apk` | Android 安装包 |
+| `flutter-showcase-windows-x64-v<version>.zip` | Windows 可执行文件压缩包 |
+| `flutter-showcase-linux-x64-v<version>.tar.gz` | Linux 可执行文件压缩包 |
+| `flutter-showcase-android-v<version>.apk` | Android 安装包 |
 
 ## 权限
 
@@ -114,4 +121,5 @@ sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev
 - Release 默认为 **Draft**（草稿）状态，需手动在 GitHub 上点击 Publish
 - 所有产物保留 7 天（通过 `retention-days: 7` 控制）
 - `fail-fast: false` 确保单个平台构建失败不会影响其他平台
-- Android 构建使用 `sparkfabrik/android-build-action@v1` 自动处理 SDK 配置
+- Android 构建直接使用 `flutter build apk --release`
+- 版本号从 `pubspec.yaml` 的 `version` 字段读取（取 `+` 前部分），用于产物文件名和 Release tag

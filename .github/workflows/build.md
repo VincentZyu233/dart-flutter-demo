@@ -15,7 +15,7 @@ The workflow runs under the following conditions:
 
 ## Commit Message Convention
 
-**The full build is only triggered when the commit message contains `build action` or `build publish`.**
+**The full build is only triggered when the commit message contains `build action` or `build release`.**
 
 Otherwise, the workflow will skip the build and display:
 ```
@@ -27,7 +27,7 @@ Otherwise, the workflow will skip the build and display:
 
 ```bash
 git commit -m "feat: build action for Windows and Android"
-git commit -m "chore: build publish release v1.0"
+git commit -m "chore: build release v1.0"
 ```
 
 ### Invalid Commit Messages (will skip build)
@@ -58,9 +58,9 @@ Build artifacts for all three platforms simultaneously using matrix strategy.
 
 | Platform | Runner | Build Command | Artifact |
 |----------|--------|---------------|----------|
-| Windows x64 | `windows-latest` | `flutter build windows --release` | `flutter-showcase-windows-x64.zip` |
-| Linux x64 | `ubuntu-latest` | `flutter build linux --release` | `flutter-showcase-linux-x64.tar.gz` |
-| Android | `ubuntu-latest` | `flutter build apk --release` | `flutter-showcase-android.apk` |
+| Windows x64 | `windows-latest` | `flutter build windows --release` | `flutter-showcase-windows-x64-v<version>.zip` |
+| Linux x64 | `ubuntu-latest` | `flutter build linux --release` | `flutter-showcase-linux-x64-v<version>.tar.gz` |
+| Android | `ubuntu-latest` | `flutter build apk --release` | `flutter-showcase-android-v<version>.apk` |
 
 **Execution Steps:**
 1. Checkout code
@@ -77,10 +77,16 @@ Build artifacts for all three platforms simultaneously using matrix strategy.
 sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev
 ```
 
-**Version Tag Format:**
+**Release Tag Format:**
 ```
-<first-7-chars-of-commit-hash>-<timestamp>
-Example: abc1234-20260508-143000
+v<pubspec-version>
+Example: v0.0.1-alpha.1
+```
+
+**Artifact Filename Format:**
+```
+flutter-showcase-<platform>-v<pubspec-version>.<extension>
+Example: flutter-showcase-windows-x64-v0.0.1-alpha.1.zip
 ```
 
 ### Stage 3: Publish Release
@@ -93,16 +99,17 @@ Create a GitHub Release and upload all build artifacts.
 **Execution Steps:**
 1. Checkout code
 2. Download all build artifacts
-3. Create Draft Release (draft mode, requires manual publish)
-4. Upload Windows/Linux/Android artifacts
+3. Package artifacts with versioned filenames
+4. Create Draft Release (draft mode, requires manual publish)
+5. Upload Windows/Linux/Android artifacts
 
 **Release Contents:**
 
 | File | Description |
 |------|-------------|
-| `flutter-showcase-windows-x64.zip` | Windows executable archive |
-| `flutter-showcase-linux-x64.tar.gz` | Linux executable archive |
-| `flutter-showcase-android.apk` | Android APK package |
+| `flutter-showcase-windows-x64-v<version>.zip` | Windows executable archive |
+| `flutter-showcase-linux-x64-v<version>.tar.gz` | Linux executable archive |
+| `flutter-showcase-android-v<version>.apk` | Android APK package |
 
 ## Permissions
 
@@ -114,4 +121,5 @@ Create a GitHub Release and upload all build artifacts.
 - Releases are created in **Draft** state by default, requiring manual publish on GitHub
 - All artifacts are retained for 7 days (controlled by `retention-days: 7`)
 - `fail-fast: false` ensures a single platform build failure does not affect others
-- Android build uses `sparkfabrik/android-build-action@v1` to handle SDK configuration
+- Android build uses `flutter build apk --release` directly
+- Version is extracted from `pubspec.yaml` `version` field (part before `+`), used in artifact filenames and Release tag

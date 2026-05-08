@@ -1,7 +1,7 @@
 name: flutter_showcase
 description: A Flutter UI showcase PoC app.
 publish_to: 'none'
-version: 1.0.0+1
+version: 0.0.1-alpha.1+20260508
 
 environment:
   sdk: '>=3.0.0 <4.0.0'

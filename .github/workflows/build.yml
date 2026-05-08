@@ -15,11 +15,12 @@ permissions:
   contents: write
 
 jobs:
-  # Stage 1: Check commit message
+  # Stage 1: Check commit message & extract version
   check-commit:
     runs-on: ubuntu-latest
     outputs:
       should_build: ${{ steps.check.outputs.should_build }}
+      version: ${{ steps.version.outputs.version }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -28,7 +29,7 @@ jobs:
         id: check
         run: |
           COMMIT_MSG="${{ github.event.head_commit.message }}"
-          if echo "$COMMIT_MSG" | grep -qiE "(build action|build publish)"; then
+          if echo "$COMMIT_MSG" | grep -qiE "(build action|build release)"; then
             echo "should_build=true" >> $GITHUB_OUTPUT
             echo "✓ Commit message contains build trigger"
           else
@@ -37,30 +38,34 @@ jobs:
             echo "   Skipping build (commit: ${GITHUB_SHA:0:7})"
           fi
 
+      - name: Extract version from pubspec.yaml
+        id: version
+        if: steps.check.outputs.should_build == 'true'
+        run: |
+          FULL_VERSION=$(grep '^version:' pubspec.yaml | head -1 | sed 's/version: //')
+          VERSION="${FULL_VERSION%%+*}"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "📦 Extracted version: $VERSION (from $FULL_VERSION)"
+
   # Stage 2: Matrix build (Windows x64, Linux x64, Android APK)
   build:
     needs: check-commit
     if: needs.check-commit.outputs.should_build == 'true'
     runs-on: ${{ matrix.os }}
-    outputs:
-      version: ${{ steps.version.outputs.version }}
     strategy:
       fail-fast: false
       matrix:
         include:
           - platform: windows
             os: windows-latest
-            build_cmd: flutter build windows --release
             artifact_name: flutter-showcase-windows-x64
             artifact_path: build/windows/x64/runner/Release/
           - platform: linux
             os: ubuntu-latest
-            build_cmd: flutter build linux --release
             artifact_name: flutter-showcase-linux-x64
             artifact_path: build/linux/x64/release/bundle/
           - platform: android
             os: ubuntu-latest
-            build_cmd: flutter build apk --release
             artifact_name: flutter-showcase-android
             artifact_path: build/app/outputs/flutter-apk/
     steps:
@@ -80,13 +85,6 @@ jobs:
 
       - name: Analyze code
         run: flutter analyze --no-pub || true
-
-      - name: Generate version tag
-        id: version
-        run: |
-          VERSION="${GITHUB_SHA:0:7}-$(date +%Y%m%d-%H%M%S)"
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "📦 Build version: $VERSION"
 
       - name: Build (Windows)
         if: matrix.platform == 'windows'
@@ -127,9 +125,9 @@ jobs:
           path: build/app/outputs/flutter-apk/app-release.apk
           retention-days: 7
 
-  # Stage 3: Publish release
+  # Stage 3: Package & publish release
   publish:
-    needs: build
+    needs: [check-commit, build]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -140,34 +138,52 @@ jobs:
         with:
           path: artifacts/
 
-      - name: List artifacts
-        run: find artifacts/ -type f | head -50
+      - name: Package artifacts with version
+        run: |
+          VERSION="${{ needs.check-commit.outputs.version }}"
+
+          # Windows: zip the directory
+          cd artifacts/flutter-showcase-windows-x64
+          zip -r "../flutter-showcase-windows-x64-v${VERSION}.zip" .
+          cd ../..
+
+          # Linux: tar.gz the directory
+          cd artifacts/flutter-showcase-linux-x64
+          tar -czf "../flutter-showcase-linux-x64-v${VERSION}.tar.gz" .
+          cd ../..
+
+          # Android: rename the APK
+          cp artifacts/flutter-showcase-android/app-release.apk \
+             "artifacts/flutter-showcase-android-v${VERSION}.apk"
+
+          echo "📦 Packaged artifacts:"
+          find artifacts/ -maxdepth 1 -type f
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ needs.build.outputs.version }}
-          name: Flutter Showcase v${{ needs.build.outputs.version }}
+          tag_name: v${{ needs.check-commit.outputs.version }}
+          name: Flutter Showcase v${{ needs.check-commit.outputs.version }}
           body: |
             ## Flutter Showcase Build
 
-            **Version:** `${{ needs.build.outputs.version }}`
+            **Version:** `${{ needs.check-commit.outputs.version }}`
 
             ### Downloads
 
             | Platform | File |
             |----------|------|
-            | Windows x64 | `flutter-showcase-windows-x64.zip` |
-            | Linux x64 | `flutter-showcase-linux-x64.tar.gz` |
-            | Android APK | `flutter-showcase-android.apk` |
+            | Windows x64 | `flutter-showcase-windows-x64-v${{ needs.check-commit.outputs.version }}.zip` |
+            | Linux x64 | `flutter-showcase-linux-x64-v${{ needs.check-commit.outputs.version }}.tar.gz` |
+            | Android APK | `flutter-showcase-android-v${{ needs.check-commit.outputs.version }}.apk` |
 
             ### Build Info
             - Triggered by: `${{ github.event.head_commit.message }}`
             - Commit: `${{ github.sha }}`
           files: |
-            artifacts/flutter-showcase-windows-x64/**
-            artifacts/flutter-showcase-linux-x64/**
-            artifacts/flutter-showcase-android/**
+            artifacts/flutter-showcase-windows-x64-v*.zip
+            artifacts/flutter-showcase-linux-x64-v*.tar.gz
+            artifacts/flutter-showcase-android-v*.apk
           draft: true
           prerelease: false
         env:
@@ -176,5 +192,5 @@ jobs:
       - name: Success notification
         run: |
           echo "✅ Build and release completed!"
-          echo "   Version: ${{ needs.build.outputs.version }}"
-          echo "   Release: https://github.com/${{ github.repository }}/releases/tag/v${{ needs.build.outputs.version }}"
+          echo "   Version: ${{ needs.check-commit.outputs.version }}"
+          echo "   Release: https://github.com/${{ github.repository }}/releases/tag/v${{ needs.check-commit.outputs.version }}"
