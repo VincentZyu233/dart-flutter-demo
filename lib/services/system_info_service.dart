@@ -29,7 +29,23 @@ SystemInfoService createSystemInfoService() {
   if (Platform.isWindows) return _WindowsSystemInfo();
   if (Platform.isLinux) return _LinuxSystemInfo();
   if (Platform.isAndroid) return _AndroidSystemInfo();
+  if (Platform.isIOS) return _IOSSystemInfo();
   throw UnsupportedError('Platform not supported');
+}
+
+// ── iOS (dart:io Platform fallback) ──────────────────────────────────────────
+
+class _IOSSystemInfo implements SystemInfoService {
+  @override
+  Future<Map<String, String>> getInfo() async {
+    return {
+      'OS': Platform.operatingSystemVersion,
+      'Host': Platform.localHostname,
+      'Kernel': 'iOS ${Platform.operatingSystemVersion}',
+      'CPU': '${Platform.numberOfProcessors} cores',
+      'Locale': Platform.localeName,
+    };
+  }
 }
 
 // ── Windows (C++ FFI with dart:io fallback) ──────────────────────────────────

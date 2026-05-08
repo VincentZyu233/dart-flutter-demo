@@ -117,7 +117,7 @@ class _HomeShellState extends State<HomeShell> {
           ],
         ),
       ),
-      body: AnimatedSwitcher(
+      body: PageSwitcher(
         key_: _currentIndex,
         child: _pages[_currentIndex],
       ),

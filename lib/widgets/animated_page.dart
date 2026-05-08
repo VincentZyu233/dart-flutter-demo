@@ -91,11 +91,11 @@ class StaggeredItem extends StatelessWidget {
   }
 }
 
-class AnimatedSwitcher extends StatelessWidget {
+class PageSwitcher extends StatelessWidget {
   final Widget child;
   final Object key_;
 
-  const AnimatedSwitcher({super.key, required this.child, required this.key_});
+  const PageSwitcher({super.key, required this.child, required this.key_});
 
   @override
   Widget build(BuildContext context) {
