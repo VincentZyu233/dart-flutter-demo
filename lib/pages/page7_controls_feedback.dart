@@ -64,12 +64,18 @@ class _Page7ControlsFeedbackState extends State<Page7ControlsFeedback>
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return AnimatedPageWrapper(
-      child: SingleChildScrollView(
+      child: SizedBox.expand(
+        child: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // === State Summary ===
+          _buildSummaryCard(theme),
+          const SizedBox(height: 16),
+
           // === Selection Controls ===
           _sectionTitle('Selection Controls'),
           const SizedBox(height: 8),
@@ -267,11 +273,11 @@ class _Page7ControlsFeedbackState extends State<Page7ControlsFeedback>
               ),
             ],
           ),
-          ],
-        ),
+          const SizedBox(height: 60),
+        ],
       ),
-    );
-  }
+    ),
+  );
 
   Widget _sectionTitle(String title) {
     return Text(
@@ -290,6 +296,110 @@ class _Page7ControlsFeedbackState extends State<Page7ControlsFeedback>
           fontWeight: FontWeight.w600,
           color: Colors.grey[600],
         ),
+      ),
+    );
+  }
+
+  Widget _buildSummaryCard(ThemeData theme) {
+    final radioLabel = _radioValue == 0 ? 'Alpha' : _radioValue == 1 ? 'Beta' : 'Gamma';
+    final checks = [
+      if (_checkA) 'A',
+      if (_checkB) 'B',
+      if (_checkC) 'C',
+    ];
+    final switches = [
+      if (_switchA) 'Alpha',
+      if (_switchB) 'Beta',
+      if (_switchC) 'Gamma',
+    ];
+
+    return Card(
+      color: theme.colorScheme.surfaceContainerLow,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.data_object, size: 20, color: theme.colorScheme.primary),
+                const SizedBox(width: 8),
+                Text(
+                  'State Summary',
+                  style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            _summaryRow(theme, 'Radio', 'int', radioLabel, Icons.radio_button_checked),
+            const Divider(height: 16),
+            _summaryRow(
+              theme,
+              'Checkbox',
+              'List<bool>',
+              checks.isEmpty ? 'none' : checks.join(', '),
+              Icons.check_box,
+            ),
+            const Divider(height: 16),
+            _summaryRow(
+              theme,
+              'Switch',
+              'Map<String, bool>',
+              switches.isEmpty ? 'all off' : switches.join(', '),
+              Icons.toggle_on,
+            ),
+            const Divider(height: 16),
+            _summaryRow(
+              theme,
+              'Progress',
+              'double',
+              '${(_progressValue * 100).round()}%',
+              Icons.linear_scale,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _summaryRow(ThemeData theme, String label, String schema, String value, IconData icon) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: theme.colorScheme.primary),
+          const SizedBox(width: 8),
+          SizedBox(
+            width: 70,
+            child: Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.primaryContainer,
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Text(
+              schema,
+              style: TextStyle(
+                fontSize: 11,
+                fontFamily: 'monospace',
+                color: theme.colorScheme.onPrimaryContainer,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              value,
+              style: TextStyle(
+                color: theme.colorScheme.onSurface,
+                fontWeight: FontWeight.w500,
+              ),
+              textAlign: TextAlign.right,
+            ),
+          ),
+        ],
       ),
     );
   }

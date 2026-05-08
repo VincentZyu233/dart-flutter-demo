@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';;
 
 class Page5NavigationHub extends StatelessWidget {
   const Page5NavigationHub({super.key});
@@ -46,7 +47,29 @@ class Page5NavigationHub extends StatelessWidget {
               ListTile(
                 leading: const Icon(Icons.info),
                 title: const Text('About'),
-                onTap: () => Navigator.pop(context),
+                onTap: () {
+                  Navigator.pop(context);
+                  showAboutDialog(
+                    context: context,
+                    applicationName: 'Navigation Hub',
+                    applicationVersion: '1.0.0',
+                    applicationIcon: const Icon(Icons.explore, size: 48),
+                    children: [
+                      const Text('Navigation Hub – part of Flutter Showcase'),
+                      const SizedBox(height: 8),
+                      InkWell(
+                        onTap: () => launchUrl(Uri.parse('https://github.com/VincentZyu233/dart-flutter-demo')),
+                        child: Text(
+                          'https://github.com/VincentZyu233/dart-flutter-demo',
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.primary,
+                            decoration: TextDecoration.underline,
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
+                },
               ),
               const Divider(),
               ListTile(

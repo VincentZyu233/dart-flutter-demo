@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'pages/page0_system_info.dart';
 import 'pages/page1_dialog_lab.dart';
 import 'pages/page2_typography_studio.dart';
@@ -106,9 +107,21 @@ class _HomeShellState extends State<HomeShell> {
                   context: context,
                   applicationName: 'Flutter Showcase',
                   applicationVersion: '1.0.0',
+                  applicationIcon: const Icon(Icons.flutter_dash, size: 48),
                   children: [
                     const Text(
                       'A PoC app demonstrating Flutter\'s UI capabilities.',
+                    ),
+                    const SizedBox(height: 8),
+                    InkWell(
+                      onTap: () => launchUrl(Uri.parse('https://github.com/VincentZyu233/dart-flutter-demo')),
+                      child: Text(
+                        'https://github.com/VincentZyu233/dart-flutter-demo',
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.primary,
+                          decoration: TextDecoration.underline,
+                        ),
+                      ),
                     ),
                   ],
                 );

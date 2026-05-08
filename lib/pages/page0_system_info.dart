@@ -80,9 +80,10 @@ class _Page0SystemInfoState extends State<Page0SystemInfo> {
     }
 
     return AnimatedPageWrapper(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
+      child: SizedBox.expand(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Container(

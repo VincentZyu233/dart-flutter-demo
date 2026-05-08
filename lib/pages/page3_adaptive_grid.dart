@@ -57,67 +57,157 @@ class Page3AdaptiveGrid extends StatelessWidget {
   }
 }
 
-class _AdaptiveCard extends StatelessWidget {
+class _AdaptiveCard extends StatefulWidget {
   final int index;
   const _AdaptiveCard({required this.index});
 
   @override
-  Widget build(BuildContext context) {
-    final color = randomColor();
-    final name = randomName();
-    final sentence = randomSentence(words: 12);
+  State<_AdaptiveCard> createState() => _AdaptiveCardState();
+}
 
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      elevation: 2,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Expanded(
-            flex: 2,
-            child: Container(
-              color: color,
-              child: Center(
-                child: Icon(
-                  [
-                    Icons.image,
-                    Icons.landscape,
-                    Icons.pets,
-                    Icons.star,
-                    Icons.favorite,
-                    Icons.bolt,
-                  ][index % 6],
-                  size: 40,
-                  color: Colors.white70,
-                ),
+class _AdaptiveCardState extends State<_AdaptiveCard>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _scaleAnim;
+  bool _pressed = false;
+
+  late final Color _color;
+  late final String _name;
+  late final String _sentence;
+  late final IconData _icon;
+
+  @override
+  void initState() {
+    super.initState();
+    final i = widget.index;
+    _color = randomColor();
+    _name = randomName();
+    _sentence = randomSentence(words: 12);
+    _icon = [
+      Icons.image,
+      Icons.landscape,
+      Icons.pets,
+      Icons.star,
+      Icons.favorite,
+      Icons.bolt,
+    ][i % 6];
+
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 120),
+    );
+    _scaleAnim = Tween<double>(begin: 1.0, end: 0.94).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _onTapDown(TapDownDetails _) {
+    _controller.forward();
+    setState(() => _pressed = true);
+  }
+
+  void _onTapUp(TapUpDetails _) {
+    _controller.reverse();
+    setState(() => _pressed = false);
+  }
+
+  void _onTapCancel() {
+    _controller.reverse();
+    setState(() => _pressed = false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return Transform.scale(
+          scale: _scaleAnim.value,
+          child: child,
+        );
+      },
+      child: GestureDetector(
+        onTapDown: _onTapDown,
+        onTapUp: _onTapUp,
+        onTapCancel: _onTapCancel,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          curve: Curves.easeInOut,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            color: Theme.of(context).cardColor,
+            boxShadow: [
+              BoxShadow(
+                color: _pressed
+                    ? _color.withOpacity(0.4)
+                    : Colors.black.withOpacity(0.08),
+                blurRadius: _pressed ? 16 : 4,
+                spreadRadius: _pressed ? 2 : 0,
+                offset: Offset(0, _pressed ? 4 : 2),
               ),
-            ),
+            ],
           ),
-          Expanded(
-            flex: 3,
-            child: Padding(
-              padding: const EdgeInsets.all(10),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '$name #$index',
-                    style: Theme.of(context).textTheme.titleSmall,
-                  ),
-                  const SizedBox(height: 4),
-                  Expanded(
-                    child: Text(
-                      sentence,
-                      maxLines: 3,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodySmall,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(
+                  flex: 2,
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    color: _pressed ? Color.lerp(_color, Colors.white, 0.15) : _color,
+                    child: Center(
+                      child: AnimatedScale(
+                        scale: _pressed ? 1.2 : 1.0,
+                        duration: const Duration(milliseconds: 150),
+                        curve: Curves.easeInOut,
+                        child: Icon(
+                          _icon,
+                          size: 40,
+                          color: Colors.white70,
+                        ),
+                      ),
                     ),
                   ),
-                ],
-              ),
+                ),
+                Expanded(
+                  flex: 3,
+                  child: Padding(
+                    padding: const EdgeInsets.all(10),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        AnimatedDefaultTextStyle(
+                          duration: const Duration(milliseconds: 150),
+                          style: Theme.of(context).textTheme.titleSmall!.copyWith(
+                            fontWeight: _pressed ? FontWeight.bold : FontWeight.normal,
+                          ),
+                          child: Text('${_name} #${widget.index}'),
+                        ),
+                        const SizedBox(height: 4),
+                        Expanded(
+                          child: Text(
+                            _sentence,
+                            maxLines: 3,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-        ],
+        ),
       ),
     );
   }

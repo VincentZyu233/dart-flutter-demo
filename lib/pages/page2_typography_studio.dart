@@ -23,7 +23,8 @@ class _Page2TypographyStudioState extends State<Page2TypographyStudio> {
     final theme = Theme.of(context);
 
     return AnimatedPageWrapper(
-      child: SingleChildScrollView(
+      child: SizedBox.expand(
+        child: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,

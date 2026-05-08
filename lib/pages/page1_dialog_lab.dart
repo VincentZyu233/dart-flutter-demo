@@ -162,7 +162,7 @@ class _ModernDialogState extends State<_ModernDialog>
             borderRadius: BorderRadius.circular(16),
           ),
           child: Icon(
-            Icons.auto_awesome,
+            Icons.info_outline_rounded,
             color: theme.colorScheme.onPrimaryContainer,
             size: 24,
           ),
@@ -173,14 +173,14 @@ class _ModernDialogState extends State<_ModernDialog>
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Welcome Back',
+                'Information',
                 style: theme.textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.bold,
                 ),
               ),
               const SizedBox(height: 2),
               Text(
-                'Sign in to continue',
+                'A description should be a short, complete sentence.',
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
@@ -198,9 +198,9 @@ class _ModernDialogState extends State<_ModernDialog>
       children: [
         TextField(
           decoration: InputDecoration(
-            labelText: 'Email',
-            hintText: 'you@example.com',
-            prefixIcon: const Icon(Icons.email_outlined),
+            labelText: 'Name',
+            hintText: 'Enter your name',
+            prefixIcon: const Icon(Icons.person_outline),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
             ),
@@ -208,24 +208,12 @@ class _ModernDialogState extends State<_ModernDialog>
         ),
         const SizedBox(height: 12),
         TextField(
-          obscureText: true,
           decoration: InputDecoration(
-            labelText: 'Password',
-            hintText: 'Enter your password',
-            prefixIcon: const Icon(Icons.lock_outline),
+            labelText: 'Value',
+            hintText: 'Enter a value',
+            prefixIcon: const Icon(Icons.tag),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-            ),
-          ),
-        ),
-        const SizedBox(height: 8),
-        Align(
-          alignment: Alignment.centerRight,
-          child: TextButton(
-            onPressed: () {},
-            child: Text(
-              'Forgot password?',
-              style: TextStyle(color: theme.colorScheme.primary),
             ),
           ),
         ),
@@ -235,31 +223,28 @@ class _ModernDialogState extends State<_ModernDialog>
 
   Widget _buildActions(ThemeData theme) {
     return Row(
+      mainAxisAlignment: MainAxisAlignment.end,
       children: [
-        Expanded(
-          child: OutlinedButton(
-            onPressed: () => Navigator.of(context).pop(),
-            style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop(),
+          style: FilledButton.styleFrom(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
             ),
-            child: const Text('Cancel'),
           ),
+          child: const Text('OK'),
         ),
         const SizedBox(width: 12),
-        Expanded(
-          child: FilledButton(
-            onPressed: () => Navigator.of(context).pop(),
-            style: FilledButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
+        OutlinedButton(
+          onPressed: () => Navigator.of(context).pop(),
+          style: OutlinedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
             ),
-            child: const Text('Sign In'),
           ),
+          child: const Text('Cancel'),
         ),
       ],
     );
