@@ -189,6 +189,7 @@ class _Page4MotionLabState extends State<Page4MotionLab>
           ],
         ),
       ),
+    ),
     );
   }
 

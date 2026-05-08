@@ -136,8 +136,8 @@ class _Page0SystemInfoState extends State<Page0SystemInfo> {
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
 }
 
 class _InfoRow extends StatelessWidget {

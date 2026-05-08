@@ -140,8 +140,9 @@ class _Page2TypographyStudioState extends State<Page2TypographyStudio> {
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   TextStyle get _textStyle {
     final base = _useCustomFont

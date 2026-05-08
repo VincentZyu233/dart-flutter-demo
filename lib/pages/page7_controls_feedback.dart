@@ -277,8 +277,9 @@ class _Page7ControlsFeedbackState extends State<Page7ControlsFeedback>
         ],
       ),
     ),
-    );
-  }
+  ),
+);
+}
 
   Widget _sectionTitle(String title) {
     return Text(
