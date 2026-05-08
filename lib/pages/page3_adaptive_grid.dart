@@ -1,57 +1,58 @@
 import 'package:flutter/material.dart';
 import '../models/mock_data.dart';
+import '../widgets/animated_page.dart';
 
 class Page3AdaptiveGrid extends StatelessWidget {
   const Page3AdaptiveGrid({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final width = constraints.maxWidth;
-        int crossAxisCount;
-        if (width > 900) {
-          crossAxisCount = 3;
-        } else if (width > 600) {
-          crossAxisCount = 2;
-        } else {
-          crossAxisCount = 1;
-        }
+    return AnimatedPageWrapper(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final width = constraints.maxWidth;
+          int crossAxisCount;
+          if (width > 900) {
+            crossAxisCount = 3;
+          } else if (width > 600) {
+            crossAxisCount = 2;
+          } else {
+            crossAxisCount = 1;
+          }
 
-        return Column(
-          children: [
-            // Info bar
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              color: Theme.of(context).colorScheme.primaryContainer,
-              child: Text(
-                'Columns: $crossAxisCount  |  Width: ${width.round()}px',
-                style: TextStyle(
-                  color: Theme.of(context).colorScheme.onPrimaryContainer,
-                  fontWeight: FontWeight.w500,
+          return Column(
+            children: [
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                color: Theme.of(context).colorScheme.primaryContainer,
+                child: Text(
+                  'Columns: $crossAxisCount  |  Width: ${width.round()}px',
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onPrimaryContainer,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ),
-            ),
-            // Grid
-            Expanded(
-              child: GridView.builder(
-                padding: const EdgeInsets.all(16),
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: crossAxisCount,
-                  crossAxisSpacing: 12,
-                  mainAxisSpacing: 12,
-                  childAspectRatio: crossAxisCount == 1 ? 2.2 : 1.4,
+              Expanded(
+                child: GridView.builder(
+                  padding: const EdgeInsets.all(16),
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: crossAxisCount,
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 12,
+                    childAspectRatio: crossAxisCount == 1 ? 2.2 : 1.4,
+                  ),
+                  itemCount: 30,
+                  itemBuilder: (context, index) {
+                    return _AdaptiveCard(index: index);
+                  },
                 ),
-                itemCount: 30,
-                itemBuilder: (context, index) {
-                  return _AdaptiveCard(index: index);
-                },
               ),
-            ),
-          ],
-        );
-      },
+            ],
+          );
+        },
+      ),
     );
   }
 }

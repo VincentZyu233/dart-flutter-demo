@@ -47,7 +47,7 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "📦 Extracted version: $VERSION (from $FULL_VERSION)"
 
-  # Stage 2: Matrix build (Windows x64, Linux x64, Android APK)
+  # Stage 2: Matrix build (Windows x64, Linux x64, Android APK, iOS IPA)
   build:
     needs: check-commit
     if: needs.check-commit.outputs.should_build == 'true'
@@ -68,6 +68,10 @@ jobs:
             os: ubuntu-latest
             artifact_name: flutter-showcase-android
             artifact_path: build/app/outputs/flutter-apk/
+          - platform: ios
+            os: macos-latest
+            artifact_name: flutter-showcase-ios
+            artifact_path: build/ios/ipa/
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -81,14 +85,14 @@ jobs:
         run: flutter doctor -v
 
       - name: Generate platform projects
-        run: flutter create --project-name flutter_showcase --platforms=windows,linux,android .
+        run: flutter create --project-name flutter_showcase --platforms=windows,linux,android,ios .
 
       - name: Patch Windows runner for SystemInfo plugin
         if: matrix.platform == 'windows'
         shell: bash
         run: |
           python3 -c "
-          # Patch runner/CMakeLists.txt: add plugin source and include
+          # Patch runner/CMakeLists.txt: add plugin source, include, and export flags
           with open('windows/runner/CMakeLists.txt', 'r') as f:
               cmake = f.read()
           cmake = cmake.replace(
@@ -98,6 +102,11 @@ jobs:
           cmake = cmake.replace(
               'target_include_directories(\${BINARY_NAME} PRIVATE',
               'target_include_directories(\${BINARY_NAME} PRIVATE\n  \"\${CMAKE_CURRENT_SOURCE_DIR}/plugins/system_info\"'
+          )
+          # Add linker export flags for FFI symbols
+          cmake = cmake.replace(
+              'target_link_libraries(\${BINARY_NAME} PRIVATE flutter flutter_wrapper_plugin)',
+              'target_link_libraries(\${BINARY_NAME} PRIVATE flutter flutter_wrapper_plugin)\n\ntarget_link_options(\${BINARY_NAME} PRIVATE /EXPORT:GetSystemInfoJson /EXPORT:FreeSystemInfoJson)'
           )
           with open('windows/runner/CMakeLists.txt', 'w') as f:
               f.write(cmake)
@@ -145,6 +154,16 @@ jobs:
         if: matrix.platform == 'android'
         run: flutter build apk --release
 
+      - name: Build (iOS IPA - no codesign)
+        if: matrix.platform == 'ios'
+        run: |
+          flutter build ios --release --no-codesign
+          mkdir -p build/ios/ipa
+          mkdir -p Payload
+          cp -r build/ios/iphoneos/Runner.app Payload/
+          zip -r flutter-showcase-ios.ipa Payload
+          mv flutter-showcase-ios.ipa build/ios/ipa/
+
       - name: Upload Windows artifact
         if: matrix.platform == 'windows'
         uses: actions/upload-artifact@v4
@@ -167,6 +186,14 @@ jobs:
         with:
           name: ${{ matrix.artifact_name }}
           path: build/app/outputs/flutter-apk/app-release.apk
+          retention-days: 7
+
+      - name: Upload iOS artifact
+        if: matrix.platform == 'ios'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: build/ios/ipa/flutter-showcase-ios.ipa
           retention-days: 7
 
   # Stage 3: Package & publish release
@@ -200,6 +227,10 @@ jobs:
           cp artifacts/flutter-showcase-android/app-release.apk \
              "artifacts/flutter-showcase-android-v${VERSION}.apk"
 
+          # iOS: rename the IPA
+          cp artifacts/flutter-showcase-ios/flutter-showcase-ios.ipa \
+             "artifacts/flutter-showcase-ios-v${VERSION}.ipa"
+
           echo "📦 Packaged artifacts:"
           find artifacts/ -maxdepth 1 -type f
 
@@ -220,6 +251,7 @@ jobs:
             | Windows x64 | `flutter-showcase-windows-x64-v${{ needs.check-commit.outputs.version }}.zip` |
             | Linux x64 | `flutter-showcase-linux-x64-v${{ needs.check-commit.outputs.version }}.tar.gz` |
             | Android APK | `flutter-showcase-android-v${{ needs.check-commit.outputs.version }}.apk` |
+            | iOS IPA | `flutter-showcase-ios-v${{ needs.check-commit.outputs.version }}.ipa` |
 
             ### Build Info
             - Triggered by: `${{ github.event.head_commit.message }}`
@@ -228,7 +260,8 @@ jobs:
             artifacts/flutter-showcase-windows-x64-v*.zip
             artifacts/flutter-showcase-linux-x64-v*.tar.gz
             artifacts/flutter-showcase-android-v*.apk
-          draft: true
+            artifacts/flutter-showcase-ios-v*.ipa
+          draft: false
           prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

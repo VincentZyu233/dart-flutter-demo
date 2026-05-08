@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../widgets/animated_page.dart';
 
 class Page7ControlsFeedback extends StatefulWidget {
   const Page7ControlsFeedback({super.key});
@@ -63,9 +64,10 @@ class _Page7ControlsFeedbackState extends State<Page7ControlsFeedback>
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
-      child: Column(
+    return AnimatedPageWrapper(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
+        child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // === Selection Controls ===
@@ -214,35 +216,59 @@ class _Page7ControlsFeedbackState extends State<Page7ControlsFeedback>
               ),
               OutlinedButton(
                 onPressed: () {
-                  showModalBottomSheet(
+                  showDialog(
                     context: context,
-                    builder: (_) => Container(
-                      padding: const EdgeInsets.all(24),
-                      child: const Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.drag_handle, size: 24),
-                          SizedBox(height: 16),
-                          Text(
-                            'Bottom Sheet',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          SizedBox(height: 8),
-                          Text('This is a modal bottom sheet content area.'),
-                          SizedBox(height: 24),
-                        ],
-                      ),
+                    builder: (context) => AlertDialog(
+                      title: const Text('Info'),
+                      content: const Text('This is a simple dialog.'),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text('OK'),
+                        ),
+                      ],
                     ),
                   );
                 },
-                child: const Text('Show BottomSheet'),
+                child: const Text('Show Dialog'),
+              ),
+              FilledButton(
+                onPressed: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Action completed!'),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                },
+                child: const Text('Floating SnackBar'),
+              ),
+              TextButton(
+                onPressed: () {
+                  showDialog(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      title: const Text('Confirm'),
+                      content: const Text('Are you sure you want to proceed?'),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text('Cancel'),
+                        ),
+                        FilledButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text('Confirm'),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+                child: const Text('Confirm Dialog'),
               ),
             ],
           ),
-        ],
+          ],
+        ),
       ),
     );
   }

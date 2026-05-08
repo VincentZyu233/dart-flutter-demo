@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../widgets/animated_page.dart';
 
 class Page2TypographyStudio extends StatefulWidget {
   const Page2TypographyStudio({super.key});
@@ -21,125 +22,122 @@ class _Page2TypographyStudioState extends State<Page2TypographyStudio> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // Preview area
-          Container(
-            constraints: const BoxConstraints(minHeight: 200),
-            padding: const EdgeInsets.all(32),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.surfaceContainerHighest,
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Center(
-              child: Text(
-                _sentence,
-                textAlign: TextAlign.center,
-                style: _textStyle.copyWith(
-                  color: _textColor,
-                ),
+    return AnimatedPageWrapper(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Container(
+              constraints: const BoxConstraints(minHeight: 200),
+              padding: const EdgeInsets.all(32),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(16),
               ),
-            ),
-          ),
-
-          const SizedBox(height: 12),
-
-          // Second preview with different case
-          Container(
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.surfaceContainerLow,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: theme.colorScheme.outlineVariant),
-            ),
-            child: Text(
-              _sentence.toUpperCase(),
-              textAlign: TextAlign.center,
-              style: _textStyle.copyWith(
-                color: _textColor.withOpacity(0.6),
-                fontSize: _fontSize * 0.6,
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 32),
-
-          // Controls
-          _buildSlider(
-            label: 'Font Size',
-            value: _fontSize,
-            min: 12,
-            max: 72,
-            display: '${_fontSize.round()} px',
-            onChanged: (v) => setState(() => _fontSize = v),
-          ),
-          _buildSlider(
-            label: 'Letter Spacing',
-            value: _letterSpacing,
-            min: -2,
-            max: 12,
-            display: '${_letterSpacing.toStringAsFixed(1)} px',
-            onChanged: (v) => setState(() => _letterSpacing = v),
-          ),
-          _buildSlider(
-            label: 'Line Height',
-            value: _lineHeight,
-            min: 0.8,
-            max: 3.0,
-            display: '${_lineHeight.toStringAsFixed(2)}x',
-            onChanged: (v) => setState(() => _lineHeight = v),
-          ),
-
-          const SizedBox(height: 12),
-
-          // Font toggle
-          SwitchListTile(
-            title: const Text('Custom Serif Font'),
-            subtitle: Text(
-              _useCustomFont ? 'Google Fonts – Playfair Display' : 'System Default',
-            ),
-            value: _useCustomFont,
-            onChanged: (v) => setState(() => _useCustomFont = v),
-          ),
-
-          const SizedBox(height: 12),
-
-          // Color picker row
-          Wrap(
-            spacing: 8,
-            children: [
-              Colors.black87,
-              Colors.blue,
-              Colors.red,
-              Colors.green,
-              Colors.purple,
-              Colors.orange,
-            ].map((c) {
-              final selected = _textColor == c;
-              return GestureDetector(
-                onTap: () => setState(() => _textColor = c),
-                child: Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: c,
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: selected ? Colors.white : Colors.grey,
-                      width: selected ? 3 : 1,
-                    ),
-                    boxShadow: selected
-                        ? [BoxShadow(color: c.withOpacity(0.5), blurRadius: 8)]
-                        : [],
+              child: Center(
+                child: Text(
+                  _sentence,
+                  textAlign: TextAlign.center,
+                  style: _textStyle.copyWith(
+                    color: _textColor,
                   ),
                 ),
-              );
-            }).toList(),
-          ),
-        ],
+              ),
+            ),
+
+            const SizedBox(height: 12),
+
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surfaceContainerLow,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: theme.colorScheme.outlineVariant),
+              ),
+              child: Text(
+                _sentence.toUpperCase(),
+                textAlign: TextAlign.center,
+                style: _textStyle.copyWith(
+                  color: _textColor.withOpacity(0.6),
+                  fontSize: _fontSize * 0.6,
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 32),
+
+            _buildSlider(
+              label: 'Font Size',
+              value: _fontSize,
+              min: 12,
+              max: 72,
+              display: '${_fontSize.round()} px',
+              onChanged: (v) => setState(() => _fontSize = v),
+            ),
+            _buildSlider(
+              label: 'Letter Spacing',
+              value: _letterSpacing,
+              min: -2,
+              max: 12,
+              display: '${_letterSpacing.toStringAsFixed(1)} px',
+              onChanged: (v) => setState(() => _letterSpacing = v),
+            ),
+            _buildSlider(
+              label: 'Line Height',
+              value: _lineHeight,
+              min: 0.8,
+              max: 3.0,
+              display: '${_lineHeight.toStringAsFixed(2)}x',
+              onChanged: (v) => setState(() => _lineHeight = v),
+            ),
+
+            const SizedBox(height: 12),
+
+            SwitchListTile(
+              title: const Text('Custom Serif Font'),
+              subtitle: Text(
+                _useCustomFont ? 'Google Fonts – Playfair Display' : 'System Default',
+              ),
+              value: _useCustomFont,
+              onChanged: (v) => setState(() => _useCustomFont = v),
+            ),
+
+            const SizedBox(height: 12),
+
+            Wrap(
+              spacing: 8,
+              children: [
+                Colors.black87,
+                Colors.blue,
+                Colors.red,
+                Colors.green,
+                Colors.purple,
+                Colors.orange,
+              ].map((c) {
+                final selected = _textColor == c;
+                return GestureDetector(
+                  onTap: () => setState(() => _textColor = c),
+                  child: Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: c,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: selected ? Colors.white : Colors.grey,
+                        width: selected ? 3 : 1,
+                      ),
+                      boxShadow: selected
+                          ? [BoxShadow(color: c.withOpacity(0.5), blurRadius: 8)]
+                          : [],
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ],
+        ),
       ),
     );
   }

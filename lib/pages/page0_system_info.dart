@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import '../services/system_info_service.dart';
+import '../widgets/animated_page.dart';
 
 class Page0SystemInfo extends StatefulWidget {
   const Page0SystemInfo({super.key});
@@ -35,7 +35,16 @@ class _Page0SystemInfoState extends State<Page0SystemInfo> {
     final theme = Theme.of(context);
 
     if (_loading) {
-      return const Center(child: CircularProgressIndicator());
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const CircularProgressIndicator(),
+            const SizedBox(height: 16),
+            Text('Loading system info...', style: theme.textTheme.bodyMedium),
+          ],
+        ),
+      );
     }
 
     if (_error != null) {
@@ -43,11 +52,22 @@ class _Page0SystemInfoState extends State<Page0SystemInfo> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.error_outline, size: 48, color: Colors.red),
+            TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0, end: 1),
+              duration: const Duration(milliseconds: 600),
+              curve: Curves.elasticOut,
+              builder: (context, value, child) {
+                return Transform.scale(scale: value, child: child);
+              },
+              child: const Icon(Icons.error_outline, size: 64, color: Colors.red),
+            ),
             const SizedBox(height: 16),
             Text('Failed to load system info', style: theme.textTheme.titleMedium),
             const SizedBox(height: 8),
-            Text(_error!, style: theme.textTheme.bodySmall, textAlign: TextAlign.center),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 32),
+              child: Text(_error!, style: theme.textTheme.bodySmall, textAlign: TextAlign.center),
+            ),
             const SizedBox(height: 16),
             OutlinedButton.icon(
               onPressed: () { setState(() { _loading = true; _error = null; }); _loadInfo(); },
@@ -59,53 +79,61 @@ class _Page0SystemInfoState extends State<Page0SystemInfo> {
       );
     }
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // ASCII art header (fastfetch style)
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.surfaceContainerHighest,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Text(
-              _asciiArt,
-              style: TextStyle(
-                fontFamily: 'JetBrainsMono',
-                fontSize: 11,
-                color: theme.colorScheme.primary,
-                height: 1.2,
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 16),
-
-          // System info card
-          Card(
-            child: Padding(
+    return AnimatedPageWrapper(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Container(
               padding: const EdgeInsets.all(16),
-              child: Column(
-                children: _info.entries.map((e) => _InfoRow(
-                  label: e.key,
-                  value: e.value,
-                )).toList(),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: TweenAnimationBuilder<int>(
+                tween: Tween(begin: 0, end: _asciiArt.length),
+                duration: const Duration(milliseconds: 1200),
+                curve: Curves.easeOut,
+                builder: (context, charCount, child) {
+                  return Text(
+                    _asciiArt.substring(0, charCount),
+                    style: TextStyle(
+                      fontFamily: 'JetBrainsMono',
+                      fontSize: 11,
+                      color: theme.colorScheme.primary,
+                      height: 1.2,
+                    ),
+                  );
+                },
               ),
             ),
-          ),
 
-          const SizedBox(height: 16),
+            const SizedBox(height: 16),
 
-          // Refresh button
-          FilledButton.tonalIcon(
-            onPressed: () { setState(() { _loading = true; }); _loadInfo(); },
-            icon: const Icon(Icons.refresh),
-            label: const Text('Refresh'),
-          ),
-        ],
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  children: _info.entries.toList().asMap().entries.map((entry) {
+                    return StaggeredItem(
+                      index: entry.key,
+                      child: _InfoRow(label: entry.value.key, value: entry.value.value),
+                    );
+                  }).toList(),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            FilledButton.tonalIcon(
+              onPressed: () { setState(() { _loading = true; }); _loadInfo(); },
+              icon: const Icon(Icons.refresh),
+              label: const Text('Refresh'),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -6,14 +6,47 @@ class Page1DialogLab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: ElevatedButton.icon(
-        onPressed: () => _showWin32Dialog(context),
-        icon: const Icon(Icons.desktop_windows),
-        label: const Text('Open Classic Dialog'),
-        style: ElevatedButton.styleFrom(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-        ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          FilledButton.icon(
+            onPressed: () => _showModernDialog(context),
+            icon: const Icon(Icons.auto_awesome),
+            label: const Text('Open Modern Dialog'),
+          ),
+          const SizedBox(height: 16),
+          OutlinedButton.icon(
+            onPressed: () => _showWin32Dialog(context),
+            icon: const Icon(Icons.desktop_windows),
+            label: const Text('Open Classic Dialog'),
+          ),
+        ],
       ),
+    );
+  }
+
+  void _showModernDialog(BuildContext context) {
+    showGeneralDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'Modern Dialog',
+      barrierColor: Colors.black54,
+      transitionDuration: const Duration(milliseconds: 400),
+      transitionBuilder: (ctx, a1, a2, child) {
+        return SlideTransition(
+          position: Tween<Offset>(
+            begin: const Offset(0, 0.3),
+            end: Offset.zero,
+          ).animate(CurvedAnimation(parent: a1, curve: Curves.easeOutCubic)),
+          child: FadeTransition(
+            opacity: CurvedAnimation(parent: a1, curve: Curves.easeOut),
+            child: child,
+          ),
+        );
+      },
+      pageBuilder: (ctx, a1, a2) {
+        return const _ModernDialog();
+      },
     );
   }
 
@@ -22,6 +55,7 @@ class Page1DialogLab extends StatelessWidget {
       context: context,
       barrierDismissible: true,
       barrierLabel: 'Win32 Dialog',
+      barrierColor: Colors.black45,
       transitionDuration: const Duration(milliseconds: 200),
       transitionBuilder: (ctx, a1, a2, child) {
         return Transform.scale(
@@ -35,6 +69,204 @@ class Page1DialogLab extends StatelessWidget {
     );
   }
 }
+
+// ── Modern Dialog ──────────────────────────────────────────────────────────────
+
+class _ModernDialog extends StatefulWidget {
+  const _ModernDialog();
+
+  @override
+  State<_ModernDialog> createState() => _ModernDialogState();
+}
+
+class _ModernDialogState extends State<_ModernDialog>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _fadeAnim;
+  late final Animation<Offset> _slideAnim;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
+    _fadeAnim = CurvedAnimation(parent: _controller, curve: Curves.easeOut);
+    _slideAnim = Tween<Offset>(
+      begin: const Offset(0, 0.15),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
+    _controller.forward();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Dialog(
+      backgroundColor: theme.colorScheme.surface,
+      insetPadding: const EdgeInsets.all(24),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 440),
+        child: Padding(
+          padding: const EdgeInsets.all(28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              SlideTransition(
+                position: _slideAnim,
+                child: FadeTransition(
+                  opacity: _fadeAnim,
+                  child: _buildHeader(theme),
+                ),
+              ),
+              const SizedBox(height: 20),
+              SlideTransition(
+                position: _slideAnim,
+                child: FadeTransition(
+                  opacity: _fadeAnim,
+                  child: _buildFields(theme),
+                ),
+              ),
+              const SizedBox(height: 24),
+              SlideTransition(
+                position: _slideAnim,
+                child: FadeTransition(
+                  opacity: _fadeAnim,
+                  child: _buildActions(theme),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeader(ThemeData theme) {
+    return Row(
+      children: [
+        Container(
+          width: 48,
+          height: 48,
+          decoration: BoxDecoration(
+            color: theme.colorScheme.primaryContainer,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Icon(
+            Icons.auto_awesome,
+            color: theme.colorScheme.onPrimaryContainer,
+            size: 24,
+          ),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Welcome Back',
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                'Sign in to continue',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFields(ThemeData theme) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        TextField(
+          decoration: InputDecoration(
+            labelText: 'Email',
+            hintText: 'you@example.com',
+            prefixIcon: const Icon(Icons.email_outlined),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          obscureText: true,
+          decoration: InputDecoration(
+            labelText: 'Password',
+            hintText: 'Enter your password',
+            prefixIcon: const Icon(Icons.lock_outline),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Align(
+          alignment: Alignment.centerRight,
+          child: TextButton(
+            onPressed: () {},
+            child: Text(
+              'Forgot password?',
+              style: TextStyle(color: theme.colorScheme.primary),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildActions(ThemeData theme) {
+    return Row(
+      children: [
+        Expanded(
+          child: OutlinedButton(
+            onPressed: () => Navigator.of(context).pop(),
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: const Text('Cancel'),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: FilledButton(
+            onPressed: () => Navigator.of(context).pop(),
+            style: FilledButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: const Text('Sign In'),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ── Win32 Classic Dialog ───────────────────────────────────────────────────────
 
 class _Win32Dialog extends StatefulWidget {
   const _Win32Dialog();

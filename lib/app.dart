@@ -8,6 +8,7 @@ import 'pages/page4_motion_lab.dart';
 import 'pages/page5_navigation_hub.dart';
 import 'pages/page6_data_feed.dart';
 import 'pages/page7_controls_feedback.dart';
+import 'widgets/animated_page.dart';
 
 class FlutterShowcaseApp extends StatelessWidget {
   const FlutterShowcaseApp({super.key});
@@ -21,6 +22,15 @@ class FlutterShowcaseApp extends StatelessWidget {
         colorSchemeSeed: Colors.indigo,
         useMaterial3: true,
         textTheme: GoogleFonts.interTextTheme(),
+        pageTransitionsTheme: const PageTransitionsTheme(
+          builders: {
+            TargetPlatform.android: CupertinoPageTransitionsBuilder(),
+            TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+            TargetPlatform.windows: CupertinoPageTransitionsBuilder(),
+            TargetPlatform.macOS: CupertinoPageTransitionsBuilder(),
+            TargetPlatform.linux: CupertinoPageTransitionsBuilder(),
+          },
+        ),
       ),
       home: const HomeShell(),
     );
@@ -107,7 +117,10 @@ class _HomeShellState extends State<HomeShell> {
           ],
         ),
       ),
-      body: _pages[_currentIndex],
+      body: AnimatedSwitcher(
+        key_: _currentIndex,
+        child: _pages[_currentIndex],
+      ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _currentIndex,
         onDestinationSelected: (index) {

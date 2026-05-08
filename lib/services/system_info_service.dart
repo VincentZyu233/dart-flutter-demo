@@ -32,25 +32,36 @@ SystemInfoService createSystemInfoService() {
   throw UnsupportedError('Platform not supported');
 }
 
-// ── Windows (C++ FFI) ────────────────────────────────────────────────────────
+// ── Windows (C++ FFI with dart:io fallback) ──────────────────────────────────
 
 class _WindowsSystemInfo implements SystemInfoService {
   @override
   Future<Map<String, String>> getInfo() async {
-    final dylib = DynamicLibrary.process();
-    final getJson = dylib.lookupFunction<_GetSystemInfoJsonNative, _GetSystemInfoJsonDart>('GetSystemInfoJson');
-    final freeJson = dylib.lookupFunction<_FreeSystemInfoJsonNative, _FreeSystemInfoJsonDart>('FreeSystemInfoJson');
-
-    final ptr = getJson();
-    final jsonStr = _ptrToString(ptr);
-    freeJson(ptr);
-
     try {
+      final dylib = DynamicLibrary.process();
+      final getJson = dylib.lookupFunction<_GetSystemInfoJsonNative, _GetSystemInfoJsonDart>('GetSystemInfoJson');
+      final freeJson = dylib.lookupFunction<_FreeSystemInfoJsonNative, _FreeSystemInfoJsonDart>('FreeSystemInfoJson');
+
+      final ptr = getJson();
+      final jsonStr = _ptrToString(ptr);
+      freeJson(ptr);
+
       final decoded = jsonDecode(jsonStr) as Map<String, dynamic>;
       return decoded.map((k, v) => MapEntry(k, v.toString()));
     } catch (_) {
-      return {};
+      return _getInfoFallback();
     }
+  }
+
+  Map<String, String> _getInfoFallback() {
+    final result = <String, String>{};
+    result['OS'] = Platform.operatingSystemVersion;
+    result['Host'] = Platform.localHostname;
+    result['Kernel'] = 'Windows ${Platform.operatingSystemVersion}';
+    result['Uptime'] = '${Platform.numberOfProcessors} cores available';
+    result['CPU'] = '${Platform.numberOfProcessors} cores';
+    result['Locale'] = Platform.localeName;
+    return result;
   }
 }
 

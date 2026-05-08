@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/mock_data.dart';
+import '../widgets/animated_page.dart';
 
 class Page6DataFeed extends StatefulWidget {
   const Page6DataFeed({super.key});
@@ -50,40 +51,40 @@ class _Page6DataFeedState extends State<Page6DataFeed> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        // Toolbar
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          child: Row(
-            children: [
-              Text(
-                '${_items.length} items loaded',
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-              const Spacer(),
-              IconButton(
-                icon: Icon(_isGrid ? Icons.view_list : Icons.grid_view),
-                tooltip: _isGrid ? 'List view' : 'Grid view',
-                onPressed: () => setState(() => _isGrid = !_isGrid),
-              ),
-            ],
+    return AnimatedPageWrapper(
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Row(
+              children: [
+                Text(
+                  '${_items.length} items loaded',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+                const Spacer(),
+                IconButton(
+                  icon: Icon(_isGrid ? Icons.view_list : Icons.grid_view),
+                  tooltip: _isGrid ? 'List view' : 'Grid view',
+                  onPressed: () => setState(() => _isGrid = !_isGrid),
+                ),
+              ],
+            ),
           ),
-        ),
-        // Content
-        Expanded(
-          child: RefreshIndicator(
-            onRefresh: () async {
-              await Future.delayed(const Duration(milliseconds: 600));
-              setState(() {
-                _items.clear();
-                _loadMore();
-              });
-            },
-            child: _isGrid ? _buildGrid() : _buildList(),
+          Expanded(
+            child: RefreshIndicator(
+              onRefresh: () async {
+                await Future.delayed(const Duration(milliseconds: 600));
+                setState(() {
+                  _items.clear();
+                  _loadMore();
+                });
+              },
+              child: _isGrid ? _buildGrid() : _buildList(),
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
