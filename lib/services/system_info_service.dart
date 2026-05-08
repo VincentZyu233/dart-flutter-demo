@@ -52,7 +52,11 @@ class _IOSSystemInfo implements SystemInfoService {
     result['OS'] = Platform.operatingSystemVersion;
     result['Host'] = Platform.localHostname;
     result['Kernel'] = 'Darwin ${Platform.operatingSystemVersion}';
+    result['Uptime'] = 'N/A (fallback)';
     result['CPU'] = '${Platform.numberOfProcessors} cores';
+    result['Memory'] = 'N/A (fallback)';
+    result['Disk'] = 'N/A (fallback)';
+    result['Local IP'] = 'N/A (fallback)';
     result['Locale'] = Platform.localeName;
     return result;
   }
@@ -84,10 +88,196 @@ class _WindowsSystemInfo implements SystemInfoService {
     result['OS'] = Platform.operatingSystemVersion;
     result['Host'] = Platform.localHostname;
     result['Kernel'] = 'Windows ${Platform.operatingSystemVersion}';
-    result['Uptime'] = '${Platform.numberOfProcessors} cores available';
-    result['CPU'] = '${Platform.numberOfProcessors} cores';
+
+    // Parse systeminfo output for uptime, CPU, memory
+    try {
+      final proc = Process.runSync('systeminfo', [], runInShell: true);
+      final out = proc.stdout.toString();
+      final lines = out.split('\n');
+      String? host, bootTimeStr, cpuStr, totalMem, availMem;
+
+      for (final line in lines) {
+        final l = line.trim();
+        if (host == null) {
+          host = _tryExtract(l, ['Host Name:', '主机名:', '主機名:']);
+        }
+        if (bootTimeStr == null) {
+          bootTimeStr = _tryExtract(l, ['System Boot Time:', '系统启动时间:', '系統啟動時間:']);
+        }
+        if (cpuStr == null) {
+          cpuStr = _tryExtract(l, ['Processor(s):', '处理器:', '處理器:']);
+        }
+        if (totalMem == null) {
+          totalMem = _tryExtract(l, ['Total Physical Memory:', '物理内存总量:', '物理記憶體總量:']);
+        }
+        if (availMem == null) {
+          availMem = _tryExtract(l, ['Available Physical Memory:', '可用的物理内存:', '可用的物理記憶體:']);
+        }
+      }
+
+      if (bootTimeStr != null) {
+        result['Uptime'] = _parseWindowsBootUptime(bootTimeStr);
+      }
+      if (cpuStr != null) {
+        result['CPU'] = '$cpuStr (${Platform.numberOfProcessors} cores)';
+      } else {
+        result['CPU'] = '${Platform.numberOfProcessors} cores';
+      }
+      if (totalMem != null && availMem != null) {
+        result['Memory'] = '$_parseMemField(availMem) available / $_parseMemField(totalMem) total';
+      }
+    } catch (_) {
+      result['Uptime'] = 'unavailable (ffi fallback)';
+      result['CPU'] = '${Platform.numberOfProcessors} cores';
+    }
+
+    // Disk info via PowerShell (locale-independent)
+    try {
+      final proc = Process.runSync(
+        'powershell',
+        ['-NoProfile', '-Command',
+          "Get-CimInstance Win32_LogicalDisk -Filter \"DeviceID='C:'\" | Select-Object -ExpandProperty Size,FreeSpace"],
+        runInShell: true,
+      );
+      final out = proc.stdout.toString().trim();
+      final parts = out.split(RegExp(r'\s+'));
+      if (parts.length >= 2) {
+        final total = int.tryParse(parts[0]);
+        final free = int.tryParse(parts[1]);
+        if (total != null && free != null && total > 0) {
+          final used = total - free;
+          final totalGiB = total / (1024.0 * 1024.0 * 1024.0);
+          final usedGiB = used / (1024.0 * 1024.0 * 1024.0);
+          final pct = ((used / total) * 100).round();
+          result['Disk (C:\\)'] = 'C: ${usedGiB.toStringAsFixed(1)} GiB / ${totalGiB.toStringAsFixed(1)} GiB ($pct%)';
+        }
+      }
+    } catch (_) {
+      result['Disk (C:\\)'] = _deriveDiskFallback();
+    }
+
+    // Local IP
+    result['Local IP'] = _getWindowsLocalIPFallback();
     result['Locale'] = Platform.localeName;
     return result;
+  }
+
+  static String? _tryExtract(String line, List<String> prefixes) {
+    for (final p in prefixes) {
+      if (line.contains(p)) {
+        return line.substring(line.indexOf(p) + p.length).trim();
+      }
+    }
+    return null;
+  }
+
+  static String _parseMemField(String raw) {
+    raw = raw.replaceAll(',', '');
+    final parts = raw.split(' ');
+    // e.g. "8,192 MB" or "8.19 GB"
+    double? value;
+    String unit = '';
+    for (int i = 0; i < parts.length; i++) {
+      final v = double.tryParse(parts[i]);
+      if (v != null) {
+        value = v;
+        if (i + 1 < parts.length) unit = parts[i + 1].toUpperCase();
+        break;
+      }
+    }
+    if (value == null) return raw;
+    if (unit == 'MB') return '${(value / 1024).toStringAsFixed(1)} GiB';
+    if (unit == 'GB') return '${value.toStringAsFixed(1)} GiB';
+    return raw;
+  }
+
+  static String _parseWindowsBootUptime(String bootStr) {
+    try {
+      // systeminfo format: "5/7/2026, 8:30:15 AM" or "2026/5/7, 8:30:15"
+      // Try wmic format first: "20260507083015.500000+480"
+      final digits = bootStr.replaceAll(RegExp(r'\D'), '');
+      if (digits.length >= 14) {
+        final y = int.parse(digits.substring(0, 4));
+        final m = int.parse(digits.substring(4, 6));
+        final d = int.parse(digits.substring(6, 8));
+        final h = int.parse(digits.substring(8, 10));
+        final mi = int.parse(digits.substring(10, 12));
+        final s = int.parse(digits.substring(12, 14));
+        final dt = DateTime(y, m, d, h, mi, s);
+        final diff = DateTime.now().toUtc().difference(dt);
+        return _formatDuration(diff);
+      }
+    } catch (_) {}
+
+    // Try common date/time formats
+    try {
+      final cleaned = bootStr
+          .replaceAll(RegExp(r'[^0-9/:,\- APMampm.]'), ' ')
+          .replaceAll(RegExp(r'\s+'), ' ')
+          .trim();
+      DateTime? dt;
+      dt = DateTime.tryParse(cleaned);
+      if (dt == null) {
+        // Try "M/d/yyyy, h:mm:ss AM" format
+        final regex = RegExp(r'(\d{1,2})[/-](\d{1,2})[/-](\d{4})[, ]+(\d{1,2}):(\d{2}):(\d{2})');
+        final m = regex.firstMatch(cleaned);
+        if (m != null) {
+          final month = int.tryParse(m.group(1)!) ?? 0;
+          final day = int.tryParse(m.group(2)!) ?? 0;
+          final year = int.tryParse(m.group(3)!) ?? 0;
+          final hour = int.tryParse(m.group(4)!) ?? 0;
+          final min = int.tryParse(m.group(5)!) ?? 0;
+          final sec = int.tryParse(m.group(6)!) ?? 0;
+          if (year > 2000) {
+            var h24 = hour;
+            if (cleaned.contains('PM') && hour < 12) h24 += 12;
+            if (cleaned.contains('AM') && hour == 12) h24 = 0;
+            dt = DateTime(month > 12 ? year : year, month > 12 ? day : month, month > 12 ? month : day, h24, min, sec);
+          }
+        }
+      }
+      if (dt != null) {
+        final diff = DateTime.now().difference(dt);
+        return _formatDuration(diff);
+      }
+    } catch (_) {}
+    return bootStr;
+  }
+
+  static String _formatDuration(Duration diff) {
+    final days = diff.inDays;
+    final hours = diff.inHours % 24;
+    final mins = diff.inMinutes % 60;
+    final buf = StringBuffer();
+    if (days > 0) buf.write('$days days, ');
+    buf.write('$hours hours, $mins mins');
+    return buf.toString();
+  }
+
+  static String _getWindowsLocalIPFallback() {
+    try {
+      final proc = Process.runSync('ipconfig', [], runInShell: true);
+      final out = proc.stdout.toString();
+      final regex = RegExp(r'IPv4 Address[ .]*:\s*([0-9.]+)');
+      final match = regex.firstMatch(out);
+      if (match != null) return match.group(1)!;
+
+      // Fallback: try ipconfig with Chinese locale
+      final cnRegex = RegExp(r'IPv4 \S+[ .]*:\s*([0-9.]+)');
+      final cnMatch = cnRegex.firstMatch(out);
+      if (cnMatch != null) return cnMatch.group(1)!;
+    } catch (_) {}
+    return 'unknown';
+  }
+
+  static String _deriveDiskFallback() {
+    try {
+      final cwd = Directory.current.path;
+      final stat = FileStat.statSync(cwd);
+      return 'C: drive accessible';
+    } catch (_) {
+      return 'C: unknown';
+    }
   }
 }
 

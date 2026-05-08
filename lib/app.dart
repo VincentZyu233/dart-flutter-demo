@@ -11,29 +11,47 @@ import 'pages/page6_data_feed.dart';
 import 'pages/page7_controls_feedback.dart';
 import 'widgets/animated_page.dart';
 
+final themeNotifier = ValueNotifier<ThemeMode>(ThemeMode.light);
+
 class FlutterShowcaseApp extends StatelessWidget {
   const FlutterShowcaseApp({super.key});
 
+  static const _pageTransitions = PageTransitionsTheme(
+    builders: {
+      TargetPlatform.android: CupertinoPageTransitionsBuilder(),
+      TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+      TargetPlatform.windows: CupertinoPageTransitionsBuilder(),
+      TargetPlatform.macOS: CupertinoPageTransitionsBuilder(),
+      TargetPlatform.linux: CupertinoPageTransitionsBuilder(),
+    },
+  );
+
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Flutter Showcase',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorSchemeSeed: Colors.indigo,
-        useMaterial3: true,
-        textTheme: GoogleFonts.interTextTheme(),
-        pageTransitionsTheme: const PageTransitionsTheme(
-          builders: {
-            TargetPlatform.android: CupertinoPageTransitionsBuilder(),
-            TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
-            TargetPlatform.windows: CupertinoPageTransitionsBuilder(),
-            TargetPlatform.macOS: CupertinoPageTransitionsBuilder(),
-            TargetPlatform.linux: CupertinoPageTransitionsBuilder(),
-          },
-        ),
-      ),
-      home: const HomeShell(),
+    return ValueListenableBuilder<ThemeMode>(
+      valueListenable: themeNotifier,
+      builder: (context, themeMode, child) {
+        return MaterialApp(
+          title: 'Flutter Showcase',
+          debugShowCheckedModeBanner: false,
+          themeMode: themeMode,
+          theme: ThemeData(
+            colorSchemeSeed: Colors.indigo,
+            useMaterial3: true,
+            brightness: Brightness.light,
+            textTheme: GoogleFonts.interTextTheme(),
+            pageTransitionsTheme: _pageTransitions,
+          ),
+          darkTheme: ThemeData(
+            colorSchemeSeed: Colors.indigo,
+            useMaterial3: true,
+            brightness: Brightness.dark,
+            textTheme: GoogleFonts.interTextTheme(ThemeData.dark().textTheme),
+            pageTransitionsTheme: _pageTransitions,
+          ),
+          home: const HomeShell(),
+        );
+      },
     );
   }
 }
@@ -54,6 +72,7 @@ class _HomeShellState extends State<HomeShell> {
     Page2TypographyStudio(),
     Page3AdaptiveGrid(),
     Page4MotionLab(),
+    Page5NavigationHub(),
     Page6DataFeed(),
     Page7ControlsFeedback(),
   ];
@@ -64,8 +83,9 @@ class _HomeShellState extends State<HomeShell> {
     '2. Typography',
     '3. Adaptive Grid',
     '4. Motion Lab',
-    '5. Data Feed',
-    '6. Controls',
+    '5. NavHub',
+    '6. Data Feed',
+    '7. Controls',
   ];
 
   @override
@@ -73,19 +93,6 @@ class _HomeShellState extends State<HomeShell> {
     return Scaffold(
       appBar: AppBar(
         title: Text(_titles[_currentIndex]),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.compass_calibration),
-            tooltip: 'Navigation Hub (Page 5)',
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => const Page5NavigationHub(),
-                ),
-              );
-            },
-          ),
-        ],
       ),
       drawer: Drawer(
         child: ListView(
@@ -159,6 +166,11 @@ class _HomeShellState extends State<HomeShell> {
             icon: Icon(Icons.grid_view),
             selectedIcon: Icon(Icons.grid_on),
             label: 'Grid',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.explore_outlined),
+            selectedIcon: Icon(Icons.explore),
+            label: 'NavHub',
           ),
           NavigationDestination(
             icon: Icon(Icons.animation),

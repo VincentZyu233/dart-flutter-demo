@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../app.dart';
 
 class Page5NavigationHub extends StatelessWidget {
   const Page5NavigationHub({super.key});
@@ -328,35 +329,49 @@ class _LayoutTab extends StatelessWidget {
   }
 }
 
-class _SettingsTab extends StatelessWidget {
+class _SettingsTab extends StatefulWidget {
   const _SettingsTab();
 
   @override
+  State<_SettingsTab> createState() => _SettingsTabState();
+}
+
+class _SettingsTabState extends State<_SettingsTab> {
+  bool _notifications = true;
+
+  @override
   Widget build(BuildContext context) {
-    return ListView(
-      children: const [
-        SwitchListTile(
-          title: Text('Dark Mode'),
-          subtitle: Text('Toggle between light and dark theme'),
-          value: false,
-          onChanged: null,
-        ),
-        SwitchListTile(
-          title: Text('Notifications'),
-          subtitle: Text('Enable push notifications'),
-          value: true,
-          onChanged: null,
-        ),
-        ListTile(
-          title: Text('Language'),
-          subtitle: Text('English'),
-          trailing: Icon(Icons.chevron_right),
-        ),
-        ListTile(
-          title: Text('Version'),
-          subtitle: Text('1.0.0'),
-        ),
-      ],
+    return ValueListenableBuilder<ThemeMode>(
+      valueListenable: themeNotifier,
+      builder: (context, mode, child) {
+        return ListView(
+          children: [
+            SwitchListTile(
+              title: const Text('Dark Mode'),
+              subtitle: Text(mode == ThemeMode.dark ? 'Dark theme active' : 'Light theme active'),
+              value: mode == ThemeMode.dark,
+              onChanged: (_) {
+                themeNotifier.value = mode == ThemeMode.dark ? ThemeMode.light : ThemeMode.dark;
+              },
+            ),
+            SwitchListTile(
+              title: const Text('Notifications'),
+              subtitle: const Text('Enable push notifications'),
+              value: _notifications,
+              onChanged: (v) => setState(() => _notifications = v),
+            ),
+            ListTile(
+              title: const Text('Language'),
+              subtitle: const Text('English'),
+              trailing: const Icon(Icons.chevron_right),
+            ),
+            ListTile(
+              title: const Text('Version'),
+              subtitle: const Text('1.0.0'),
+            ),
+          ],
+        );
+      },
     );
   }
 }

@@ -81,64 +81,70 @@ class _Page0SystemInfoState extends State<Page0SystemInfo> {
 
     return AnimatedPageWrapper(
       child: SizedBox.expand(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
+        child: ScrollConfiguration(
+          behavior: ScrollConfiguration.of(context).copyWith(
+            physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+            scrollbars: false,
+          ),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.only(left: 16, right: 16, top: 16, bottom: 80),
           child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: TweenAnimationBuilder<int>(
-                tween: Tween(begin: 0, end: _asciiArt.length),
-                duration: const Duration(milliseconds: 1200),
-                curve: Curves.easeOut,
-                builder: (context, charCount, child) {
-                  return Text(
-                    _asciiArt.substring(0, charCount),
-                    style: TextStyle(
-                      fontFamily: 'JetBrainsMono',
-                      fontSize: 11,
-                      color: theme.colorScheme.primary,
-                      height: 1.2,
-                    ),
-                  );
-                },
-              ),
-            ),
-
-            const SizedBox(height: 16),
-
-            Card(
-              child: Padding(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Container(
                 padding: const EdgeInsets.all(16),
-                child: Column(
-                  children: _info.entries.toList().asMap().entries.map((entry) {
-                    return StaggeredItem(
-                      index: entry.key,
-                      child: _InfoRow(label: entry.value.key, value: entry.value.value),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: TweenAnimationBuilder<int>(
+                  tween: Tween(begin: 0, end: _asciiArt.length),
+                  duration: const Duration(milliseconds: 1200),
+                  curve: Curves.easeOut,
+                  builder: (context, charCount, child) {
+                    return Text(
+                      _asciiArt.substring(0, charCount),
+                      style: TextStyle(
+                        fontFamily: 'JetBrainsMono',
+                        fontSize: 11,
+                        color: theme.colorScheme.primary,
+                        height: 1.2,
+                      ),
                     );
-                  }).toList(),
+                  },
                 ),
               ),
-            ),
 
-            const SizedBox(height: 16),
+              const SizedBox(height: 16),
 
-            FilledButton.tonalIcon(
-              onPressed: () { setState(() { _loading = true; }); _loadInfo(); },
-              icon: const Icon(Icons.refresh),
-              label: const Text('Refresh'),
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    children: _info.entries.toList().asMap().entries.map((entry) {
+                      return StaggeredItem(
+                        index: entry.key,
+                        child: _InfoRow(label: entry.value.key, value: entry.value.value),
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 16),
+
+              FilledButton.tonalIcon(
+                onPressed: () { setState(() { _loading = true; }); _loadInfo(); },
+                icon: const Icon(Icons.refresh),
+                label: const Text('Refresh'),
+              ),
+            ],
             ),
-          ],
+          ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 
 }
 

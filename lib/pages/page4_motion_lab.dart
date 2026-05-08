@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import '../app.dart';
 import '../widgets/animated_page.dart';
 
 class Page4MotionLab extends StatefulWidget {
@@ -28,7 +29,6 @@ class _Page4MotionLabState extends State<Page4MotionLab>
   double _sliderValue = 0.5;
   double _slider2Value = 0.3;
   bool _toggleA = true;
-  bool _toggleB = false;
   int _segmentValue = 0;
   int _radioValue = 0;
   bool _checkboxA = true;
@@ -507,11 +507,22 @@ class _Page4MotionLabState extends State<Page4MotionLab>
               value: _toggleA,
               onChanged: (v) => setState(() => _toggleA = v),
             ),
-            SwitchListTile(
-              title: const Text('Feature Beta'),
-              subtitle: const Text('Enable dark mode override'),
-              value: _toggleB,
-              onChanged: (v) => setState(() => _toggleB = v),
+            ValueListenableBuilder<ThemeMode>(
+              valueListenable: themeNotifier,
+              builder: (context, mode, _) {
+                return SwitchListTile(
+                  title: const Text('Dark Mode'),
+                  subtitle: Text(mode == ThemeMode.dark
+                      ? 'Dark theme active'
+                      : 'Light theme active'),
+                  value: mode == ThemeMode.dark,
+                  onChanged: (_) {
+                    themeNotifier.value = mode == ThemeMode.dark
+                        ? ThemeMode.light
+                        : ThemeMode.dark;
+                  },
+                );
+              },
             ),
             const Divider(height: 32),
             Wrap(
