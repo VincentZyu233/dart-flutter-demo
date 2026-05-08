@@ -87,31 +87,33 @@ jobs:
         if: matrix.platform == 'windows'
         shell: bash
         run: |
-          # Add system_info_plugin.cpp to CMakeLists.txt
-          sed -i 's|"${CMAKE_CURRENT_SOURCE_DIR}/runner/win32_window.cpp"|&\n  "${CMAKE_CURRENT_SOURCE_DIR}/runner/plugins/system_info/system_info_plugin.cpp"|' windows/CMakeLists.txt
-          # Add include path
-          sed -i 's|target_include_directories(${BINARY_NAME} PRIVATE|&\n  "${CMAKE_CURRENT_SOURCE_DIR}/runner/plugins/system_info"|' windows/CMakeLists.txt
+          # Add system_info_plugin.cpp to runner/CMakeLists.txt source list
+          sed -i 's|"runner/win32_window.cpp"|&\n  "runner/plugins/system_info/system_info_plugin.cpp"|' windows/runner/CMakeLists.txt
+          # Add include path for plugin headers (after existing include_directories line)
+          sed -i '/target_include_directories(${BINARY_NAME} PRIVATE/!b;n;a\  "${CMAKE_CURRENT_SOURCE_DIR}/plugins/system_info"' windows/runner/CMakeLists.txt
           # Add system_info include to main.cpp
           sed -i '1a #include "plugins/system_info/system_info_plugin.h"' windows/runner/main.cpp
           # Add plugin registration before message loop
           sed -i '/window.SetQuitOnClose(true);/a\\n  flutter_showcase::SystemInfoPlugin::RegisterWithRegistrar(\n      window.GetRegistrar()->GetPluginRegistrarWindows(\n          "flutter_showcase/system_info"));' windows/runner/main.cpp
-          # Add link libraries
-          sed -i 's|target_link_libraries(${BINARY_NAME} PRIVATE flutter flutter_wrapper_plugin)|& user32 psapi kernel32 iphlpapi ws2_32|' windows/CMakeLists.txt
+          echo "=== Patched windows/runner/CMakeLists.txt ===" && cat windows/runner/CMakeLists.txt
+          echo "=== Patched windows/runner/main.cpp (first 30 lines) ===" && head -30 windows/runner/main.cpp
 
       - name: Patch Linux runner for SystemInfo plugin
         if: matrix.platform == 'linux'
         shell: bash
         run: |
-          # Add system_info_plugin.cc to CMakeLists.txt
-          sed -i 's|"${CMAKE_CURRENT_SOURCE_DIR}/runner/my_application.cc"|&\n  "${CMAKE_CURRENT_SOURCE_DIR}/runner/plugins/system_info/system_info_plugin.cc"|' linux/CMakeLists.txt
-          # Add include path
-          sed -i 's|target_include_directories(${BINARY_NAME} PRIVATE|&\n  "${CMAKE_CURRENT_SOURCE_DIR}/runner/plugins/system_info"|' linux/CMakeLists.txt
+          # Add system_info_plugin.cc to runner/CMakeLists.txt source list
+          sed -i 's|"runner/my_application.cc"|&\n  "runner/plugins/system_info/system_info_plugin.cc"|' linux/runner/CMakeLists.txt
+          # Add include path for plugin headers (after existing include_directories line)
+          sed -i '/target_include_directories(${BINARY_NAME} PRIVATE/!b;n;a\  "${CMAKE_CURRENT_SOURCE_DIR}/plugins/system_info"' linux/runner/CMakeLists.txt
           # Add plugin include to main.cc
           sed -i '1a #include "plugins/system_info/system_info_plugin.h"' linux/runner/main.cc
           # Add plugin registration before GTK init
-          sed -i '/g_autoptr(MyApplication) app/i\  // Register native plugins\n  flutter_showcase::SystemInfoPlugin::RegisterWithRegistrar(\n      fl_plugin_registrar_get_default());' linux/runner/main.cc
+          sed -i '/g_autoptr(MyApplication) app/i\  flutter_showcase::SystemInfoPlugin::RegisterWithRegistrar(\n      fl_plugin_registrar_get_default());' linux/runner/main.cc
           # Add fl_plugin_registrar include
           sed -i '2a #include <flutter/plugin_registrar.h>' linux/runner/main.cc
+          echo "=== Patched linux/runner/CMakeLists.txt ===" && cat linux/runner/CMakeLists.txt
+          echo "=== Patched linux/runner/main.cc ===" && cat linux/runner/main.cc
 
       - name: Patch Android for SystemInfo plugin
         if: matrix.platform == 'android'
@@ -119,8 +121,9 @@ jobs:
         run: |
           # Add plugin registration to MainActivity.kt
           sed -i 's|super.configureFlutterEngine(flutterEngine)|&\n        flutterEngine.plugins.add(SystemInfoPlugin())|' android/app/src/main/kotlin/com/example/flutter_showcase/MainActivity.kt
-          # Add import
-          sed -i '1a import com.example.flutter_showcase.SystemInfoPlugin' android/app/src/main/kotlin/com/example/flutter_showcase/MainActivity.kt
+          # Add import after package declaration
+          sed -i '/^package /a import com.example.flutter_showcase.SystemInfoPlugin' android/app/src/main/kotlin/com/example/flutter_showcase/MainActivity.kt
+          echo "=== Patched MainActivity.kt ===" && cat android/app/src/main/kotlin/com/example/flutter_showcase/MainActivity.kt
 
       - name: Install dependencies
         run: flutter pub get
