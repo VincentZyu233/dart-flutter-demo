@@ -4,9 +4,22 @@ import 'dart:io';
 
 import 'package:flutter/services.dart';
 
-// FFI type defs for Windows C++ exports
-typedef _GetSystemInfoJsonC = Pointer<Utf8> Function();
-typedef _FreeSystemInfoJsonC = Void Function(Pointer<Utf8>);
+// FFI type defs for Windows C++ exports (using Uint8 instead of Utf8)
+typedef _GetSystemInfoJsonNative = Pointer<Uint8> Function();
+typedef _GetSystemInfoJsonDart = Pointer<Uint8> Function();
+typedef _FreeSystemInfoJsonNative = Void Function(Pointer<Uint8>);
+typedef _FreeSystemInfoJsonDart = void Function(Pointer<Uint8>);
+
+// Helper: convert null-terminated C string to Dart String
+String _ptrToString(Pointer<Uint8> ptr) {
+  final bytes = <int>[];
+  for (int i = 0;; i++) {
+    final b = ptr[i];
+    if (b == 0) break;
+    bytes.add(b);
+  }
+  return utf8.decode(bytes);
+}
 
 abstract class SystemInfoService {
   Future<Map<String, String>> getInfo();
@@ -25,11 +38,11 @@ class _WindowsSystemInfo implements SystemInfoService {
   @override
   Future<Map<String, String>> getInfo() async {
     final dylib = DynamicLibrary.process();
-    final getJson = dylib.lookupFunction<_GetSystemInfoJsonC, _GetSystemInfoJsonC>('GetSystemInfoJson');
-    final freeJson = dylib.lookupFunction<_FreeSystemInfoJsonC, _FreeSystemInfoJsonC>('FreeSystemInfoJson');
+    final getJson = dylib.lookupFunction<_GetSystemInfoJsonNative, _GetSystemInfoJsonDart>('GetSystemInfoJson');
+    final freeJson = dylib.lookupFunction<_FreeSystemInfoJsonNative, _FreeSystemInfoJsonDart>('FreeSystemInfoJson');
 
     final ptr = getJson();
-    final jsonStr = ptr.toDartString();
+    final jsonStr = _ptrToString(ptr);
     freeJson(ptr);
 
     try {
