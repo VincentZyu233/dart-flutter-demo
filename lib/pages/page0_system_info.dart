@@ -45,14 +45,10 @@ class _Page0SystemInfoState extends State<Page0SystemInfo> {
 
     return AnimatedPageWrapper(
       child: SizedBox.expand(
-        child: ScrollConfiguration(
-          behavior: ScrollConfiguration.of(context).copyWith(
-            physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
-            scrollbars: false,
-          ),
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.only(left: 16, right: 16, top: 12, bottom: 80),
-            child: Column(
+        child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+          padding: const EdgeInsets.only(left: 16, right: 16, top: 12, bottom: 80),
+          child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 _buildHeader(theme),
@@ -91,7 +87,6 @@ class _Page0SystemInfoState extends State<Page0SystemInfo> {
             ),
           ),
         ),
-      ),
     );
   }
 
