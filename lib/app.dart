@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'pages/page0_system_info.dart';
 import 'pages/page1_dialog_lab.dart';
 import 'pages/page2_typography_studio.dart';
 import 'pages/page3_adaptive_grid.dart';
@@ -37,6 +38,7 @@ class _HomeShellState extends State<HomeShell> {
   int _currentIndex = 0;
 
   static const _pages = [
+    Page0SystemInfo(),
     Page1DialogLab(),
     Page2TypographyStudio(),
     Page3AdaptiveGrid(),
@@ -46,6 +48,7 @@ class _HomeShellState extends State<HomeShell> {
   ];
 
   static const _titles = [
+    '0. System Info',
     '1. Dialog Lab',
     '2. Typography',
     '3. Adaptive Grid',
@@ -111,6 +114,11 @@ class _HomeShellState extends State<HomeShell> {
           setState(() => _currentIndex = index);
         },
         destinations: const [
+          NavigationDestination(
+            icon: Icon(Icons.info_outline),
+            selectedIcon: Icon(Icons.info),
+            label: 'System',
+          ),
           NavigationDestination(
             icon: Icon(Icons.chat_bubble_outline),
             selectedIcon: Icon(Icons.chat_bubble),
