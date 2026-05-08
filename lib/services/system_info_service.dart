@@ -33,18 +33,28 @@ SystemInfoService createSystemInfoService() {
   throw UnsupportedError('Platform not supported');
 }
 
-// ── iOS (dart:io Platform fallback) ──────────────────────────────────────────
+// ── iOS (Swift MethodChannel with dart:io fallback) ──────────────────────────
 
 class _IOSSystemInfo implements SystemInfoService {
+  static const _channel = MethodChannel('flutter_showcase/system_info');
+
   @override
   Future<Map<String, String>> getInfo() async {
-    return {
-      'OS': Platform.operatingSystemVersion,
-      'Host': Platform.localHostname,
-      'Kernel': 'iOS ${Platform.operatingSystemVersion}',
-      'CPU': '${Platform.numberOfProcessors} cores',
-      'Locale': Platform.localeName,
-    };
+    try {
+      final result = await _channel.invokeMapMethod<String, String>('getInfo');
+      if (result != null) return result;
+    } catch (_) {}
+    return _getInfoFallback();
+  }
+
+  Map<String, String> _getInfoFallback() {
+    final result = <String, String>{};
+    result['OS'] = Platform.operatingSystemVersion;
+    result['Host'] = Platform.localHostname;
+    result['Kernel'] = 'Darwin ${Platform.operatingSystemVersion}';
+    result['CPU'] = '${Platform.numberOfProcessors} cores';
+    result['Locale'] = Platform.localeName;
+    return result;
   }
 }
 

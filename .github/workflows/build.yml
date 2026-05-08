@@ -87,6 +87,31 @@ jobs:
       - name: Generate platform projects
         run: flutter create --project-name flutter_showcase --platforms=windows,linux,android,ios .
 
+      - name: Copy platform plugins
+        shell: bash
+        run: |
+          case "${{ matrix.platform }}" in
+            windows)
+              mkdir -p windows/runner/plugins/system_info
+              cp plugins/windows/system_info_plugin.cpp windows/runner/plugins/system_info/
+              cp plugins/windows/system_info_plugin.h windows/runner/plugins/system_info/
+              ;;
+            linux)
+              mkdir -p linux/runner/plugins/system_info
+              cp plugins/linux/system_info_plugin.cc linux/runner/plugins/system_info/
+              cp plugins/linux/system_info_plugin.h linux/runner/plugins/system_info/
+              ;;
+            android)
+              mkdir -p android/app/src/main/kotlin/com/example/flutter_showcase
+              cp plugins/android/SystemInfoPlugin.kt android/app/src/main/kotlin/com/example/flutter_showcase/
+              ;;
+            ios)
+              mkdir -p ios/Runner
+              cp plugins/ios/SystemInfoPlugin.swift ios/Runner/
+              ;;
+          esac
+          echo "✓ Copied plugins/${{ matrix.platform }} to platform directory"
+
       - name: Patch Windows runner for SystemInfo plugin
         if: matrix.platform == 'windows'
         shell: bash
@@ -153,6 +178,23 @@ jobs:
       - name: Build (Android APK)
         if: matrix.platform == 'android'
         run: flutter build apk --release
+
+      - name: Patch iOS for SystemInfo plugin
+        if: matrix.platform == 'ios'
+        shell: bash
+        run: |
+          # Register plugin in AppDelegate.swift
+          python3 -c "
+          with open('ios/Runner/AppDelegate.swift', 'r') as f:
+              swift = f.read()
+          swift = swift.replace(
+              'GeneratedPluginRegistrant.register(with: self)',
+              'GeneratedPluginRegistrant.register(with: self)\n    SystemInfoPlugin.register(with: self)'
+          )
+          with open('ios/Runner/AppDelegate.swift', 'w') as f:
+              f.write(swift)
+          "
+          echo "=== Patched AppDelegate.swift ===" && cat ios/Runner/AppDelegate.swift
 
       - name: Build (iOS IPA - no codesign)
         if: matrix.platform == 'ios'

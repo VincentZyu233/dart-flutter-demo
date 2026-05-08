@@ -66,11 +66,6 @@ class SystemInfoPlugin : FlutterPlugin, MethodCallHandler {
     }
 
     private fun getUptime(): String {
-        val uptimeMillis = System.currentTimeMillis() - android.os.SystemClock.elapsedRealtime()
-        val uptimeSec = TimeUnit.MILLISECONDS.toSeconds(
-            System.currentTimeMillis() - android.os.SystemClock.elapsedRealtime()
-        )
-        // elapsedRealtime is time since boot, so uptime = elapsedRealtime
         val elapsed = android.os.SystemClock.elapsedRealtime()
         val seconds = TimeUnit.MILLISECONDS.toSeconds(elapsed)
         val days = seconds / 86400
@@ -111,7 +106,6 @@ class SystemInfoPlugin : FlutterPlugin, MethodCallHandler {
         val freeMemory = runtime.freeMemory()
         val usedMemory = totalMemory - freeMemory
 
-        // Try to get system memory from /proc/meminfo if available
         return try {
             val reader = java.io.BufferedReader(java.io.FileReader("/proc/meminfo"))
             var memTotal = 0L
