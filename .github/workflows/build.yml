@@ -80,6 +80,9 @@ jobs:
       - name: Flutter doctor
         run: flutter doctor -v
 
+      - name: Generate platform projects
+        run: flutter create --project-name flutter_showcase --platforms=windows,linux,android .
+
       - name: Install dependencies
         run: flutter pub get
 
