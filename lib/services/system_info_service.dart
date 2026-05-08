@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'dart:ffi';
 import 'dart:io';
-import 'dart:isolate';
 
 import 'package:flutter/services.dart';
 
@@ -89,7 +88,7 @@ class _WindowsSystemInfo implements SystemInfoService {
     }
 
     late final Future<Map<String, String>> future;
-    future = Isolate.run(_getInfoSync).then((result) {
+    future = Future<Map<String, String>>(_getInfoSync).then((result) {
       _cachedInfo = Map<String, String>.from(result);
       return Map<String, String>.from(result);
     });
@@ -163,7 +162,7 @@ class _LinuxSystemInfo implements SystemInfoService {
     }
 
     late final Future<Map<String, String>> future;
-    future = Isolate.run(_getInfoSync).then((result) {
+    future = Future<Map<String, String>>(_getInfoSync).then((result) {
       _cachedInfo = Map<String, String>.from(result);
       return Map<String, String>.from(result);
     });

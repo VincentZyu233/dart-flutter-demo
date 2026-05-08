@@ -11,6 +11,11 @@ import 'widgets/animated_page.dart';
 
 final themeNotifier = ValueNotifier<ThemeMode>(ThemeMode.light);
 
+void toggleThemeMode() {
+  themeNotifier.value =
+      themeNotifier.value == ThemeMode.dark ? ThemeMode.light : ThemeMode.dark;
+}
+
 class FlutterShowcaseApp extends StatelessWidget {
   const FlutterShowcaseApp({super.key});
 
@@ -85,79 +90,82 @@ class _HomeShellState extends State<HomeShell> {
     if (_currentIndex >= _pages.length) {
       _currentIndex = _pages.length - 1;
     }
-    final isDark = themeNotifier.value == ThemeMode.dark;
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(_titles[_currentIndex]),
-        actions: [
-          IconButton(
-            tooltip: isDark ? 'Switch to light theme' : 'Switch to dark theme',
-            icon: Icon(isDark ? Icons.light_mode : Icons.dark_mode),
-            onPressed: () {
-              themeNotifier.value = isDark ? ThemeMode.light : ThemeMode.dark;
-            },
-          ),
-        ],
-      ),
-      drawer: Drawer(
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            const UserAccountsDrawerHeader(
-              accountName: Text('Flutter Showcase'),
-              accountEmail: Text('PoC v1.0'),
-              currentAccountPicture: CircleAvatar(
-                child: Icon(Icons.flutter_dash),
+    return ValueListenableBuilder<ThemeMode>(
+      valueListenable: themeNotifier,
+      builder: (context, themeMode, _) {
+        final isDark = themeMode == ThemeMode.dark;
+        return Scaffold(
+          appBar: AppBar(
+            title: Text(_titles[_currentIndex]),
+            actions: [
+              IconButton(
+                tooltip: isDark ? 'Switch to light theme' : 'Switch to dark theme',
+                icon: Icon(isDark ? Icons.light_mode : Icons.dark_mode),
+                onPressed: toggleThemeMode,
               ),
+            ],
+          ),
+          drawer: Drawer(
+            child: ListView(
+              padding: EdgeInsets.zero,
+              children: [
+                const UserAccountsDrawerHeader(
+                  accountName: Text('Flutter Showcase'),
+                  accountEmail: Text('PoC v1.0'),
+                  currentAccountPicture: CircleAvatar(
+                    child: Icon(Icons.flutter_dash),
+                  ),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.info_outline),
+                  title: const Text('About'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _showAboutDialog(context);
+                  },
+                ),
+              ],
             ),
-            ListTile(
-              leading: const Icon(Icons.info_outline),
-              title: const Text('About'),
-              onTap: () {
-                Navigator.pop(context);
-                _showAboutDialog(context);
-              },
-            ),
-          ],
-        ),
-      ),
-      body: PageSwitcher(
-        key_: _currentIndex,
-        child: _pages[_currentIndex],
-      ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _currentIndex,
-        onDestinationSelected: (index) {
-          setState(() => _currentIndex = index);
-        },
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.info_outline),
-            selectedIcon: Icon(Icons.info),
-            label: 'System',
           ),
-          NavigationDestination(
-            icon: Icon(Icons.chat_bubble_outline),
-            selectedIcon: Icon(Icons.chat_bubble),
-            label: 'Dialog',
+          body: PageSwitcher(
+            key_: _currentIndex,
+            child: _pages[_currentIndex],
           ),
-          NavigationDestination(
-            icon: Icon(Icons.text_fields),
-            selectedIcon: Icon(Icons.text_snippet),
-            label: 'Type',
+          bottomNavigationBar: NavigationBar(
+            selectedIndex: _currentIndex,
+            onDestinationSelected: (index) {
+              setState(() => _currentIndex = index);
+            },
+            destinations: const [
+              NavigationDestination(
+                icon: Icon(Icons.info_outline),
+                selectedIcon: Icon(Icons.info),
+                label: 'System',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.chat_bubble_outline),
+                selectedIcon: Icon(Icons.chat_bubble),
+                label: 'Dialog',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.text_fields),
+                selectedIcon: Icon(Icons.text_snippet),
+                label: 'Type',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.grid_view),
+                selectedIcon: Icon(Icons.grid_on),
+                label: 'Grid',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.tune),
+                selectedIcon: Icon(Icons.settings_input_component),
+                label: 'Controls',
+              ),
+            ],
           ),
-          NavigationDestination(
-            icon: Icon(Icons.grid_view),
-            selectedIcon: Icon(Icons.grid_on),
-            label: 'Grid',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.tune),
-            selectedIcon: Icon(Icons.settings_input_component),
-            label: 'Controls',
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 

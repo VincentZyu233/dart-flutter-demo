@@ -110,8 +110,19 @@ static std::string GetHostname() {
 }
 
 static std::string GetKernelVersion() {
+  using RtlGetVersion = LONG(WINAPI*)(PRTL_OSVERSIONINFOW);
+  auto rtlGetVersion = (RtlGetVersion)GetProcAddress(
+      GetModuleHandleW(L"ntdll.dll"), "RtlGetVersion");
+
+  if (!rtlGetVersion) return "WIN32_NT";
+
+  RTL_OSVERSIONINFOW osvi = {};
+  osvi.dwOSVersionInfoSize = sizeof(osvi);
+  if (rtlGetVersion(&osvi) != 0) return "WIN32_NT";
+
   std::ostringstream ss;
-  ss << "WIN32_NT " << GetenvOrDefault("OS", "Windows");
+  ss << "WIN32_NT " << osvi.dwMajorVersion << "."
+     << osvi.dwMinorVersion << "." << osvi.dwBuildNumber;
   return ss.str();
 }
 
@@ -216,23 +227,57 @@ static std::string GetDiskInfo(const std::string& drive) {
 static std::string GetLocalIP() {
   WSADATA wsaData;
   if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) return "unknown";
+
+  ULONG size = 0;
+  DWORD ret = GetAdaptersAddresses(AF_INET, GAA_FLAG_SKIP_ANYCAST |
+      GAA_FLAG_SKIP_MULTICAST | GAA_FLAG_SKIP_DNS_SERVER, nullptr, nullptr, &size);
+  if (ret != ERROR_BUFFER_OVERFLOW) {
+    WSACleanup();
+    return "unknown";
+  }
+
+  IP_ADAPTER_ADDRESSES* adapters =
+      reinterpret_cast<IP_ADAPTER_ADDRESSES*>(malloc(size));
+  if (!adapters) {
+    WSACleanup();
+    return "unknown";
+  }
+
+  ret = GetAdaptersAddresses(AF_INET, GAA_FLAG_SKIP_ANYCAST |
+      GAA_FLAG_SKIP_MULTICAST | GAA_FLAG_SKIP_DNS_SERVER, nullptr, adapters, &size);
+  if (ret != NO_ERROR) {
+    free(adapters);
+    WSACleanup();
+    return "unknown";
+  }
+
+  std::string ip = "unknown";
+  for (auto adapter = adapters; adapter != nullptr; adapter = adapter->Next) {
+    if (adapter->IfType == IF_TYPE_SOFTWARE_LOOPBACK ||
+        adapter->OperStatus != IfOperStatusUp) {
+      continue;
+    }
+
+    for (auto addr = adapter->FirstUnicastAddress; addr != nullptr; addr = addr->Next) {
+      if (!addr->Address.lpSockaddr ||
+          addr->Address.lpSockaddr->sa_family != AF_INET) {
+        continue;
+      }
+
+      char buf[INET_ADDRSTRLEN] = {};
+      auto* ipv4 = reinterpret_cast<sockaddr_in*>(addr->Address.lpSockaddr);
+      if (inet_ntop(AF_INET, &ipv4->sin_addr, buf, sizeof(buf))) {
+        ip = buf;
+        break;
+      }
+    }
+
+    if (ip != "unknown") break;
+  }
+
+  free(adapters);
   WSACleanup();
-
-  char hostname[256];
-  if (gethostname(hostname, sizeof(hostname)) != 0) return "unknown";
-
-  struct addrinfo hints = {}, *result = nullptr;
-  hints.ai_family = AF_INET;
-  hints.ai_socktype = SOCK_STREAM;
-
-  if (getaddrinfo(hostname, nullptr, &hints, &result) != 0) return "unknown";
-
-  char ip[INET_ADDRSTRLEN];
-  auto addr = (struct sockaddr_in*)result->ai_addr;
-  inet_ntop(AF_INET, &addr->sin_addr, ip, sizeof(ip));
-  freeaddrinfo(result);
-
-  return std::string(ip);
+  return ip;
 }
 
 // ── Locale ───────────────────────────────────────────────────────────────────
