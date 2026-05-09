@@ -343,12 +343,12 @@ jobs:
 
           # Linux: tar.gz the directory
           cd artifacts/dart-flutter-demo-showcase-linux-x64
-          tar -czf "../dart-flutter-demo-showcase-linux-x64-v${VERSION}.tar.gz" . 
+          tar -czf "../dart-flutter-demo-showcase-linux-x64-v${VERSION}.tar.gz" .
           cd ../..
 
           # macOS: zip the .app bundle
           cd artifacts/dart-flutter-demo-showcase-macos-x64
-          zip -r "../dart-flutter-demo-showcase-macos-x64-v${VERSION}.zip" . 
+          zip -r "../dart-flutter-demo-showcase-macos-x64-v${VERSION}.zip" .
           cd ../..
 
           # Android: rename the APK
@@ -378,34 +378,34 @@ jobs:
           BASE_URL="https://github.com/${REPO}/releases/download/v${VERSION}"
           COMMIT_LOG="${{ needs.check-commit.outputs.commits_log }}"
           BUILD_INFO=$(cat <<EOF
-### Build Info
-- Triggered by: \`${{ github.event.head_commit.message }}\`
-- Commit: \`${{ github.sha }}\`
-EOF
+          ### Build Info
+          - Triggered by: \`${{ github.event.head_commit.message }}\`
+          - Commit: \`${{ github.sha }}\`
+          EOF
           )
 
           python3 - "$REPO" "$VERSION" "$BASE_URL" "$BUILD_INFO" "$COMMIT_LOG" <<'PY'
-import pathlib
-import sys
+          import pathlib
+          import sys
 
-repo, version, base_url, build_info, commit_log = sys.argv[1:6]
-template = pathlib.Path('.github/release_template.md').read_text(encoding='utf-8')
-body = (
-    template
-    .replace('__REPO__', repo)
-    .replace('__VERSION__', version)
-    .replace('__BASE_URL__', base_url)
-    .replace('__BUILD_INFO__', build_info)
-    .replace('__COMMIT_LOG__', commit_log)
-)
-pathlib.Path('release_body.md').write_text(body, encoding='utf-8')
-PY
+          repo, version, base_url, build_info, commit_log = sys.argv[1:6]
+          template = pathlib.Path('.github/release_template.md').read_text(encoding='utf-8')
+          body = (
+              template
+              .replace('__REPO__', repo)
+              .replace('__VERSION__', version)
+              .replace('__BASE_URL__', base_url)
+              .replace('__BUILD_INFO__', build_info)
+              .replace('__COMMIT_LOG__', commit_log)
+          )
+          pathlib.Path('release_body.md').write_text(body, encoding='utf-8')
+          PY
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ needs.check-commit.outputs.version }}
-          name: Flutter Showcase v${{ needs.check-commit.outputs.version }}
+          name: Dart + Flutter Demo v${{ needs.check-commit.outputs.version }}
           body_path: release_body.md
           files: |
             artifacts/dart-flutter-demo-showcase-windows-x64-v*.zip
