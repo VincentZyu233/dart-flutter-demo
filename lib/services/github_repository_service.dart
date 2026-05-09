@@ -220,7 +220,7 @@ class GitHubRepositoryService {
 
       final request = await client.getUrl(uri);
       request.headers.set(HttpHeaders.acceptHeader, 'application/vnd.github+json');
-      request.headers.set(HttpHeaders.userAgentHeader, 'flutter_showcase/0.2');
+      request.headers.set(HttpHeaders.userAgentHeader, 'dart_flutter_demo/0.2');
       request.headers.set('X-GitHub-Api-Version', '2022-11-28');
 
       final response = await request.close();

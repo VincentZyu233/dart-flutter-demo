@@ -107,7 +107,7 @@ jobs:
         run: flutter doctor -v
 
       - name: Generate platform projects
-        run: flutter create --project-name flutter_showcase --platforms=windows,linux,android,ios .
+        run: flutter create --project-name dart_flutter_demo --platforms=windows,linux,android,ios .
 
       - name: Copy platform plugins
         shell: bash
@@ -124,8 +124,8 @@ jobs:
               cp plugins/linux/system_info_plugin.h linux/runner/plugins/system_info/
               ;;
             android)
-              mkdir -p android/app/src/main/kotlin/com/example/flutter_showcase
-              cp plugins/android/SystemInfoPlugin.kt android/app/src/main/kotlin/com/example/flutter_showcase/
+              mkdir -p android/app/src/main/kotlin/com/example/dart_flutter_demo
+              cp plugins/android/SystemInfoPlugin.kt android/app/src/main/kotlin/com/example/dart_flutter_demo/
               ;;
             ios)
               mkdir -p ios/Runner
@@ -169,7 +169,7 @@ jobs:
         shell: bash
         run: |
           python3 -c "
-          kt_path = 'android/app/src/main/kotlin/com/example/flutter_showcase/MainActivity.kt'
+          kt_path = 'android/app/src/main/kotlin/com/example/dart_flutter_demo/MainActivity.kt'
           with open(kt_path, 'r') as f:
               kt = f.read()
           kt = kt.replace(
@@ -183,7 +183,7 @@ jobs:
           with open(kt_path, 'w') as f:
               f.write(kt)
           "
-          echo "=== Patched MainActivity.kt ===" && cat android/app/src/main/kotlin/com/example/flutter_showcase/MainActivity.kt
+          echo "=== Patched MainActivity.kt ===" && cat android/app/src/main/kotlin/com/example/dart_flutter_demo/MainActivity.kt
 
       - name: Install dependencies
         run: flutter pub get

@@ -1,4 +1,4 @@
-# Flutter Showcase
+# dart_flutter_demo
 
 A cross-platform Flutter UI showcase PoC (Proof of Concept) app for Android, Windows, and Linux.
 

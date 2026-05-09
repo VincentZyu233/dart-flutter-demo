@@ -58,7 +58,7 @@ That means these CI steps can be removed for Windows:
 ## Recommended Migration Procedure
 
 1. On a machine with Flutter installed, run:
-   `flutter create --project-name flutter_showcase --platforms=windows .`
+   `flutter create --project-name dart_flutter_demo --platforms=windows .`
 2. Review the generated `windows/` tree
 3. Apply the permanent plugin wiring in `windows/runner/CMakeLists.txt`
 4. Build once with `flutter build windows --release`

@@ -71,6 +71,7 @@ class HomeShell extends StatefulWidget {
 
 class _HomeShellState extends State<HomeShell> {
   int _currentIndex = 0;
+  Future<PackageInfo>? _packageInfoFuture;
 
   static const _pages = [
     Page0SystemInfo(),
@@ -87,6 +88,12 @@ class _HomeShellState extends State<HomeShell> {
     '3. Adaptive Grid',
     '4. Controls',
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _packageInfoFuture = PackageInfo.fromPlatform();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -121,16 +128,29 @@ class _HomeShellState extends State<HomeShell> {
             child: ListView(
               padding: EdgeInsets.zero,
               children: [
-                const UserAccountsDrawerHeader(
-                  accountName: Text('Flutter Showcase'),
-                  accountEmail: Text('PoC v1.0'),
-                  currentAccountPicture: CircleAvatar(
-                    child: Icon(Icons.flutter_dash),
-                  ),
+                FutureBuilder<PackageInfo>(
+                  future: _packageInfoFuture,
+                  builder: (context, snapshot) {
+                    final info = snapshot.data;
+                    final appName = (info?.appName.isNotEmpty ?? false)
+                        ? info!.appName
+                        : 'dart_flutter_demo';
+                    final version = info == null
+                        ? 'version loading...'
+                        : '${info.version}+${info.buildNumber}';
+                    return UserAccountsDrawerHeader(
+                      accountName: Text(appName),
+                      accountEmail: Text(version),
+                      currentAccountPicture: const CircleAvatar(
+                        child: Icon(Icons.flutter_dash),
+                      ),
+                    );
+                  },
                 ),
                 ListTile(
                   leading: const Icon(Icons.info_outline),
                   title: const Text('About'),
+                  subtitle: const Text('Source Code On Github'),
                   onTap: () {
                     Navigator.pop(context);
                     _showAboutDialog(context);

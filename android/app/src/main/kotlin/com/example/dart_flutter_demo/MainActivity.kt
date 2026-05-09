@@ -1,4 +1,4 @@
-package com.example.flutter_showcase
+package com.example.dart_flutter_demo
 
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine

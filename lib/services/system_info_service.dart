@@ -84,7 +84,7 @@ Future<File> exportSystemInfoDebugSnapshot() async {
   final snapshot = getSystemInfoDebugSnapshot();
   final now = DateTime.now();
   final filename =
-      'flutter_showcase_system_info_${_timestampForFile(now)}.log';
+      'dart_flutter_demo_system_info_${_timestampForFile(now)}.log';
   final directory = await _resolveLogExportDirectory();
   await directory.create(recursive: true);
   final file = File('${directory.path}${Platform.pathSeparator}$filename');
@@ -115,7 +115,7 @@ Future<Directory> _resolveLogExportDirectory() async {
 
   final temp = Directory.systemTemp;
   return Directory(
-    '${temp.path}${Platform.pathSeparator}flutter_showcase_logs',
+    '${temp.path}${Platform.pathSeparator}dart_flutter_demo_logs',
   );
 }
 
@@ -173,7 +173,7 @@ class _WindowsFallbackState {
 // ── iOS ──────────────────────────────────────────────────────────────────────
 
 class _IOSSystemInfo implements SystemInfoService {
-  static const _channel = MethodChannel('flutter_showcase/system_info');
+  static const _channel = MethodChannel('dart_flutter_demo/system_info');
   static Map<String, String>? _cachedInfo;
   static SystemInfoDebugSnapshot _debugSnapshot = const SystemInfoDebugSnapshot(
     platform: 'ios',
@@ -957,7 +957,7 @@ class _LinuxSystemInfo implements SystemInfoService {
 // ── Android ──────────────────────────────────────────────────────────────────
 
 class _AndroidSystemInfo implements SystemInfoService {
-  static const _channel = MethodChannel('flutter_showcase/system_info');
+  static const _channel = MethodChannel('dart_flutter_demo/system_info');
   static Map<String, String>? _cachedInfo;
   static SystemInfoDebugSnapshot _debugSnapshot = const SystemInfoDebugSnapshot(
     platform: 'android',

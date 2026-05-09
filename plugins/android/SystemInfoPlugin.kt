@@ -1,4 +1,4 @@
-package com.example.flutter_showcase
+package com.example.dart_flutter_demo
 
 import android.content.Context
 import android.net.ConnectivityManager
@@ -22,7 +22,7 @@ class SystemInfoPlugin : FlutterPlugin, MethodCallHandler {
     private lateinit var context: Context
 
     override fun onAttachedToEngine(binding: FlutterPlugin.FlutterPluginBinding) {
-        channel = MethodChannel(binding.binaryMessenger, "flutter_showcase/system_info")
+        channel = MethodChannel(binding.binaryMessenger, "dart_flutter_demo/system_info")
         channel.setMethodCallHandler(this)
         context = binding.applicationContext
     }

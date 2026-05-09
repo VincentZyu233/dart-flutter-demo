@@ -5,7 +5,7 @@ import Flutter
 public class SystemInfoPlugin: NSObject, FlutterPlugin {
     public static func register(with registrar: FlutterPluginRegistrar) {
         let channel = FlutterMethodChannel(
-            name: "flutter_showcase/system_info",
+            name: "dart_flutter_demo/system_info",
             binaryMessenger: registrar.messenger()
         )
         let instance = SystemInfoPlugin()
