@@ -21,9 +21,12 @@ jobs:
     outputs:
       should_build: ${{ steps.check.outputs.should_build }}
       version: ${{ steps.version.outputs.version }}
+      commits_log: ${{ steps.commits.outputs.log }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Check commit message
         id: check
@@ -46,6 +49,23 @@ jobs:
           VERSION="${FULL_VERSION%%+*}"
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "📦 Extracted version: $VERSION (from $FULL_VERSION)"
+
+      - name: Collect commit log
+        id: commits
+        if: steps.check.outputs.should_build == 'true'
+        run: |
+          BASE_SHA="${{ github.event.before }}"
+          HEAD_SHA="${{ github.sha }}"
+          if [ -z "$BASE_SHA" ] || [ "$BASE_SHA" = "0000000000000000000000000000000000000000" ]; then
+            BASE_SHA="$(git rev-list --max-parents=0 HEAD | tail -1)"
+          fi
+
+          {
+            echo "log<<EOF"
+            git log "$BASE_SHA..$HEAD_SHA" --pretty=format:'- %s (`%h`) — @%an' --reverse
+            echo
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
 
   # Stage 2: Matrix build (Windows x64, Linux x64, Android APK, iOS IPA)
   build:
@@ -75,6 +95,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
@@ -189,7 +211,22 @@ jobs:
 
       - name: Build (Android APK)
         if: matrix.platform == 'android'
-        run: flutter build apk --release
+        run: |
+          flutter build apk --release
+          flutter build apk --release --split-per-abi
+
+      - name: Verify Android APK outputs
+        if: matrix.platform == 'android'
+        shell: bash
+        run: |
+          echo "=== build/app/outputs/flutter-apk ==="
+          ls -lah build/app/outputs/flutter-apk/
+
+          test -f build/app/outputs/flutter-apk/app-release.apk
+          test -f build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
+          test -f build/app/outputs/flutter-apk/app-x86_64-release.apk
+
+          echo "✓ Android APK outputs verified"
 
       - name: Patch iOS for SystemInfo plugin
         if: matrix.platform == 'ios'
@@ -252,7 +289,10 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact_name }}
-          path: build/app/outputs/flutter-apk/app-release.apk
+          path: |
+            build/app/outputs/flutter-apk/app-release.apk
+            build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
+            build/app/outputs/flutter-apk/app-x86_64-release.apk
           retention-days: 7
 
       - name: Upload iOS artifact
@@ -291,8 +331,17 @@ jobs:
           cd ../..
 
           # Android: rename the APK
+          ls -lah artifacts/dart-flutter-demo-showcase-android/
+          test -f artifacts/dart-flutter-demo-showcase-android/app-release.apk
+          test -f artifacts/dart-flutter-demo-showcase-android/app-arm64-v8a-release.apk
+          test -f artifacts/dart-flutter-demo-showcase-android/app-x86_64-release.apk
+
           cp artifacts/dart-flutter-demo-showcase-android/app-release.apk \
-             "artifacts/dart-flutter-demo-showcase-android-v${VERSION}.apk"
+             "artifacts/dart-flutter-demo-showcase-android-universal-v${VERSION}.apk"
+          cp artifacts/dart-flutter-demo-showcase-android/app-arm64-v8a-release.apk \
+             "artifacts/dart-flutter-demo-showcase-android-arm64-v${VERSION}.apk"
+          cp artifacts/dart-flutter-demo-showcase-android/app-x86_64-release.apk \
+             "artifacts/dart-flutter-demo-showcase-android-x86_64-v${VERSION}.apk"
 
           # iOS: rename the IPA
           cp artifacts/dart-flutter-demo-showcase-ios/dart-flutter-demo-showcase-ios.ipa \
@@ -301,32 +350,42 @@ jobs:
           echo "📦 Packaged artifacts:"
           find artifacts/ -maxdepth 1 -type f
 
+      - name: Render release template
+        run: |
+          VERSION="${{ needs.check-commit.outputs.version }}"
+          REPO="${{ github.repository }}"
+          BASE_URL="https://github.com/${REPO}/releases/download/v${VERSION}"
+          COMMIT_LOG="${{ needs.check-commit.outputs.commits_log }}"
+
+          sed \
+            -e "s#__REPO__#${REPO}#g" \
+            -e "s#__VERSION__#v${VERSION}#g" \
+            -e "s#__BASE_URL__#${BASE_URL}#g" \
+            .github/release_template.md > release_body.md
+
+          {
+            echo ""
+            echo "### Build Info"
+            echo "- Triggered by: \`${{ github.event.head_commit.message }}\`"
+            echo "- Commit: \`${{ github.sha }}\`"
+            echo ""
+            echo "### Commit Log"
+            echo ""
+            printf '%s\n' "$COMMIT_LOG"
+          } >> release_body.md
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ needs.check-commit.outputs.version }}
           name: Flutter Showcase v${{ needs.check-commit.outputs.version }}
-          body: |
-            ## Flutter Showcase Build
-
-            **Version:** `${{ needs.check-commit.outputs.version }}`
-
-            ### Downloads
-
-            | Platform | File |
-            |----------|------|
-            | Windows x64 | `dart-flutter-demo-showcase-windows-x64-v${{ needs.check-commit.outputs.version }}.zip` |
-            | Linux x64 | `dart-flutter-demo-showcase-linux-x64-v${{ needs.check-commit.outputs.version }}.tar.gz` |
-            | Android APK | `dart-flutter-demo-showcase-android-v${{ needs.check-commit.outputs.version }}.apk` |
-            | iOS IPA | `dart-flutter-demo-showcase-ios-v${{ needs.check-commit.outputs.version }}.ipa` |
-
-            ### Build Info
-            - Triggered by: `${{ github.event.head_commit.message }}`
-            - Commit: `${{ github.sha }}`
+          body_path: release_body.md
           files: |
             artifacts/dart-flutter-demo-showcase-windows-x64-v*.zip
             artifacts/dart-flutter-demo-showcase-linux-x64-v*.tar.gz
-            artifacts/dart-flutter-demo-showcase-android-v*.apk
+            artifacts/dart-flutter-demo-showcase-android-universal-v*.apk
+            artifacts/dart-flutter-demo-showcase-android-arm64-v*.apk
+            artifacts/dart-flutter-demo-showcase-android-x86_64-v*.apk
             artifacts/dart-flutter-demo-showcase-ios-v*.ipa
           draft: false
           prerelease: false
