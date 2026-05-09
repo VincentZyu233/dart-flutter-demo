@@ -32,6 +32,7 @@ class _Page3AdaptiveGridState extends State<Page3AdaptiveGrid> {
   _DensityMode _densityMode = _DensityMode.comfy;
   _SortMode _sortMode = _SortMode.updated;
   bool _useProxy = false;
+  bool _controlsExpanded = false;
 
   bool _loading = false;
   String? _error;
@@ -144,9 +145,17 @@ class _Page3AdaptiveGridState extends State<Page3AdaptiveGrid> {
   }
 
   int _columnCount(double width) {
-    final base = width < 700 ? 1 : width < 1100 ? 2 : 3;
+    final base = width < 500
+        ? 1
+        : width < 800
+            ? 2
+            : width < 1100
+                ? 3
+                : width < 1400
+                    ? 4
+                    : 5;
     return switch (_densityMode) {
-      _DensityMode.compact => math.min(base + 1, 4),
+      _DensityMode.compact => math.min(base + 1, 5),
       _DensityMode.comfy => base,
       _DensityMode.spacious => math.max(1, base - 1),
     };
@@ -219,9 +228,22 @@ class _Page3AdaptiveGridState extends State<Page3AdaptiveGrid> {
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: theme.colorScheme.outlineVariant),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: ExpansionTile(
+        key: const PageStorageKey('page3-controls'),
+        initiallyExpanded: _controlsExpanded,
+        onExpansionChanged: (expanded) => setState(() => _controlsExpanded = expanded),
+        tilePadding: EdgeInsets.zero,
+        childrenPadding: EdgeInsets.zero,
+        title: Text(
+          'Configuration',
+          style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+        ),
+        subtitle: Text(
+          'Collapsed by default. Tap to edit sources, proxy, filter, sort, and layout.',
+          style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+        ),
         children: [
+          const SizedBox(height: 8),
           Wrap(
             spacing: 8,
             runSpacing: 8,
@@ -238,9 +260,9 @@ class _Page3AdaptiveGridState extends State<Page3AdaptiveGrid> {
               ),
               SegmentedButton<_DensityMode>(
                 segments: const [
-                  ButtonSegment(value: _DensityMode.compact, label: Text('Compact')),
-                  ButtonSegment(value: _DensityMode.comfy, label: Text('Comfort')),
-                  ButtonSegment(value: _DensityMode.spacious, label: Text('Spacious')),
+                  ButtonSegment(value: _DensityMode.compact, label: Text('5 Columns')),
+                  ButtonSegment(value: _DensityMode.comfy, label: Text('3 Columns')),
+                  ButtonSegment(value: _DensityMode.spacious, label: Text('1 Column')),
                 ],
                 selected: {_densityMode},
                 onSelectionChanged: (value) => setState(() => _densityMode = value.first),
@@ -425,8 +447,14 @@ class _Page3AdaptiveGridState extends State<Page3AdaptiveGrid> {
           Text('Gap: ${_gap.toStringAsFixed(0)}'),
           Text('Width: ${width.round()}px'),
           Text('Range: ${_widthBucket(width)}'),
-          Text('Mode: ${_layoutMode.name}'),
-          Text('Density: ${_densityMode.name}'),
+          Text('Layout: ${_layoutMode.name}'),
+          Text(
+            'Density: ${switch (_densityMode) {
+              _DensityMode.compact => '5 columns',
+              _DensityMode.comfy => '3 columns',
+              _DensityMode.spacious => '1 column',
+            }}',
+          ),
           Text('Repos: $count'),
           Text(_status),
         ],
