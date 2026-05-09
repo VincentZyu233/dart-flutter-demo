@@ -62,7 +62,7 @@ jobs:
 
           {
             echo "log<<EOF"
-            git log "$BASE_SHA..$HEAD_SHA" --pretty=format:'- %s (`%h`) — @%an' --reverse
+            git log "$BASE_SHA..$HEAD_SHA" --pretty=format:'- %s (%h) — @%an' --reverse
             echo
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
