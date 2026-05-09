@@ -1,5 +1,9 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+
 import '../widgets/animated_page.dart';
 
 class Page2TypographyStudio extends StatefulWidget {
@@ -9,22 +13,130 @@ class Page2TypographyStudio extends StatefulWidget {
   State<Page2TypographyStudio> createState() => _Page2TypographyStudioState();
 }
 
+enum _FontMode {
+  systemDefault,
+  googleFonts,
+  localFile,
+}
+
 class _Page2TypographyStudioState extends State<Page2TypographyStudio> {
+  static const _sentence = 'The quick brown fox jumps over the lazy dog';
+  static const _paragraph =
+      'Typography is not neutral. Weight, rhythm, spacing, and color all change how the same words feel on screen.';
+
   double _fontSize = 32;
   double _letterSpacing = 0;
   double _lineHeight = 1.5;
-  bool _useCustomFont = false;
   Color _textColor = Colors.black87;
+  _FontMode _fontMode = _FontMode.systemDefault;
 
-  static const _sentence = 'The quick brown fox jumps over the lazy dog';
+  bool _loadingLocalFont = false;
+  String? _localFontFamily;
+  String? _localFontStatus;
+
+  final TextEditingController _fontPathController = TextEditingController();
+
+  static const _palette = <Color>[
+    Colors.white,
+    Color(0xFFF5F7FA),
+    Colors.black87,
+    Color(0xFF1F2937),
+    Color(0xFF334155),
+    Color(0xFF0F766E),
+    Color(0xFF0369A1),
+    Color(0xFF4338CA),
+    Color(0xFF7C3AED),
+    Color(0xFFBE185D),
+    Color(0xFFB45309),
+    Color(0xFFCA8A04),
+    Color(0xFF15803D),
+    Color(0xFF06B6D4),
+    Color(0xFFF97316),
+  ];
+
+  @override
+  void dispose() {
+    _fontPathController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadLocalFont() async {
+    final path = _fontPathController.text.trim();
+    if (path.isEmpty) {
+      setState(() {
+        _localFontStatus = 'Enter a local .ttf/.otf path first.';
+      });
+      return;
+    }
+
+    final file = File(path);
+    if (!await file.exists()) {
+      setState(() {
+        _localFontStatus = 'Font file not found.';
+      });
+      return;
+    }
+
+    setState(() {
+      _loadingLocalFont = true;
+      _localFontStatus = 'Loading font file...';
+    });
+
+    try {
+      final bytes = await file.readAsBytes();
+      final family = 'LocalFont_${DateTime.now().millisecondsSinceEpoch}';
+      final loader = FontLoader(family)
+        ..addFont(Future.value(ByteData.sublistView(bytes)));
+      await loader.load();
+      if (!mounted) return;
+      setState(() {
+        _localFontFamily = family;
+        _fontMode = _FontMode.localFile;
+        _localFontStatus = 'Loaded for this session: $path';
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _localFontStatus = 'Load failed: $e';
+      });
+    } finally {
+      if (!mounted) return;
+      setState(() {
+        _loadingLocalFont = false;
+      });
+    }
+  }
+
+  TextStyle get _textStyle {
+    switch (_fontMode) {
+      case _FontMode.systemDefault:
+        return TextStyle(
+          fontSize: _fontSize,
+          letterSpacing: _letterSpacing,
+          height: _lineHeight,
+        );
+      case _FontMode.googleFonts:
+        return GoogleFonts.playfairDisplay(
+          fontSize: _fontSize,
+          letterSpacing: _letterSpacing,
+          height: _lineHeight,
+        );
+      case _FontMode.localFile:
+        return TextStyle(
+          fontFamily: _localFontFamily,
+          fontSize: _fontSize,
+          letterSpacing: _letterSpacing,
+          height: _lineHeight,
+        );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
     return AnimatedPageWrapper(
-      child: SizedBox.expand(
-        child: SingleChildScrollView(
+      child: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -40,15 +152,11 @@ class _Page2TypographyStudioState extends State<Page2TypographyStudio> {
                 child: Text(
                   _sentence,
                   textAlign: TextAlign.center,
-                  style: _textStyle.copyWith(
-                    color: _textColor,
-                  ),
+                  style: _textStyle.copyWith(color: _textColor),
                 ),
               ),
             ),
-
             const SizedBox(height: 12),
-
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
@@ -60,21 +168,19 @@ class _Page2TypographyStudioState extends State<Page2TypographyStudio> {
                 _sentence.toUpperCase(),
                 textAlign: TextAlign.center,
                 style: _textStyle.copyWith(
-                  color: _textColor.withOpacity(0.6),
+                  color: _textColor.withValues(alpha: 0.6),
                   fontSize: _fontSize * 0.6,
                 ),
               ),
             ),
-
             const SizedBox(height: 32),
-
             _buildSlider(
               label: 'Font Size',
               value: _fontSize,
               min: 12,
               max: 72,
               display: '${_fontSize.round()} px',
-              onChanged: (v) => setState(() => _fontSize = v),
+              onChanged: (value) => setState(() => _fontSize = value),
             ),
             _buildSlider(
               label: 'Letter Spacing',
@@ -82,7 +188,7 @@ class _Page2TypographyStudioState extends State<Page2TypographyStudio> {
               min: -2,
               max: 12,
               display: '${_letterSpacing.toStringAsFixed(1)} px',
-              onChanged: (v) => setState(() => _letterSpacing = v),
+              onChanged: (value) => setState(() => _letterSpacing = value),
             ),
             _buildSlider(
               label: 'Line Height',
@@ -90,48 +196,101 @@ class _Page2TypographyStudioState extends State<Page2TypographyStudio> {
               min: 0.8,
               max: 3.0,
               display: '${_lineHeight.toStringAsFixed(2)}x',
-              onChanged: (v) => setState(() => _lineHeight = v),
+              onChanged: (value) => setState(() => _lineHeight = value),
             ),
-
             const SizedBox(height: 12),
-
-            SwitchListTile(
-              title: const Text('Custom Serif Font'),
+            RadioListTile<_FontMode>(
+              title: const Text('System Default'),
+              value: _FontMode.systemDefault,
+              groupValue: _fontMode,
+              onChanged: (value) {
+                if (value == null) return;
+                setState(() => _fontMode = value);
+              },
+            ),
+            RadioListTile<_FontMode>(
+              title: const Text('Google Fonts – Playfair Display'),
+              subtitle: const Text('Online packaged font from the Google Fonts plugin.'),
+              value: _FontMode.googleFonts,
+              groupValue: _fontMode,
+              onChanged: (value) {
+                if (value == null) return;
+                setState(() => _fontMode = value);
+              },
+            ),
+            RadioListTile<_FontMode>(
+              title: const Text('Local Font File'),
               subtitle: Text(
-                _useCustomFont ? 'Google Fonts – Playfair Display' : 'System Default',
+                _localFontStatus ?? 'Load one local font from disk for this session.',
               ),
-              value: _useCustomFont,
-              onChanged: (v) => setState(() => _useCustomFont = v),
+              value: _FontMode.localFile,
+              groupValue: _fontMode,
+              onChanged: (value) {
+                if (value == null) return;
+                setState(() => _fontMode = value);
+              },
             ),
-
+            const SizedBox(height: 8),
+            TextField(
+              controller: _fontPathController,
+              decoration: const InputDecoration(
+                labelText: 'Local font path',
+                hintText: r'D:\fonts\YourFont.ttf',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                FilledButton.icon(
+                  onPressed: _loadingLocalFont ? null : _loadLocalFont,
+                  icon: _loadingLocalFont
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.upload_file),
+                  label: Text(_loadingLocalFont ? 'Loading...' : 'Load Local Font'),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'One font at a time, session only.',
+                    style: TextStyle(color: theme.colorScheme.onSurface.withValues(alpha: 0.6)),
+                  ),
+                ),
+              ],
+            ),
             const SizedBox(height: 12),
-
             Wrap(
               spacing: 8,
-              children: [
-                Colors.black87,
-                Colors.blue,
-                Colors.red,
-                Colors.green,
-                Colors.purple,
-                Colors.orange,
-              ].map((c) {
-                final selected = _textColor == c;
+              runSpacing: 8,
+              children: _palette.map((color) {
+                final selected = _textColor.value == color.value;
+                final borderColor = color.computeLuminance() > 0.65
+                    ? Colors.black26
+                    : Colors.white70;
                 return GestureDetector(
-                  onTap: () => setState(() => _textColor = c),
+                  onTap: () => setState(() => _textColor = color),
                   child: Container(
                     width: 36,
                     height: 36,
                     decoration: BoxDecoration(
-                      color: c,
+                      color: color,
                       shape: BoxShape.circle,
                       border: Border.all(
-                        color: selected ? Colors.white : Colors.grey,
+                        color: selected ? borderColor : Colors.grey,
                         width: selected ? 3 : 1,
                       ),
                       boxShadow: selected
-                          ? [BoxShadow(color: c.withOpacity(0.5), blurRadius: 8)]
-                          : [],
+                          ? [
+                              BoxShadow(
+                                color: color.withValues(alpha: 0.5),
+                                blurRadius: 8,
+                              ),
+                            ]
+                          : const [],
                     ),
                   ),
                 );
@@ -140,23 +299,7 @@ class _Page2TypographyStudioState extends State<Page2TypographyStudio> {
           ],
         ),
       ),
-    ),
-  );
-}
-
-  TextStyle get _textStyle {
-    final base = _useCustomFont
-        ? GoogleFonts.playfairDisplay(
-            fontSize: _fontSize,
-            letterSpacing: _letterSpacing,
-            height: _lineHeight,
-          )
-        : TextStyle(
-            fontSize: _fontSize,
-            letterSpacing: _letterSpacing,
-            height: _lineHeight,
-          );
-    return base;
+    );
   }
 
   Widget _buildSlider({

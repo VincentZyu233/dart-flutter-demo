@@ -9,11 +9,14 @@ import 'pages/page3_adaptive_grid.dart';
 import 'pages/page4_controls_feedback.dart';
 import 'widgets/animated_page.dart';
 
-final themeNotifier = ValueNotifier<ThemeMode>(ThemeMode.light);
+final themeNotifier = ValueNotifier<ThemeMode>(ThemeMode.system);
 
 void toggleThemeMode() {
-  themeNotifier.value =
-      themeNotifier.value == ThemeMode.dark ? ThemeMode.light : ThemeMode.dark;
+  themeNotifier.value = switch (themeNotifier.value) {
+    ThemeMode.system => ThemeMode.light,
+    ThemeMode.light => ThemeMode.dark,
+    ThemeMode.dark => ThemeMode.system,
+  };
 }
 
 class FlutterShowcaseApp extends StatelessWidget {
@@ -93,14 +96,23 @@ class _HomeShellState extends State<HomeShell> {
     return ValueListenableBuilder<ThemeMode>(
       valueListenable: themeNotifier,
       builder: (context, themeMode, _) {
-        final isDark = themeMode == ThemeMode.dark;
+        final themeIcon = switch (themeMode) {
+          ThemeMode.system => Icons.desktop_windows_outlined,
+          ThemeMode.light => Icons.wb_sunny_outlined,
+          ThemeMode.dark => Icons.nightlight_round,
+        };
+        final themeTooltip = switch (themeMode) {
+          ThemeMode.system => 'Theme: follow system',
+          ThemeMode.light => 'Theme: light mode',
+          ThemeMode.dark => 'Theme: dark mode',
+        };
         return Scaffold(
           appBar: AppBar(
             title: Text(_titles[_currentIndex]),
             actions: [
               IconButton(
-                tooltip: isDark ? 'Switch to light theme' : 'Switch to dark theme',
-                icon: Icon(isDark ? Icons.light_mode : Icons.dark_mode),
+                tooltip: '$themeTooltip. Tap to switch.',
+                icon: Icon(themeIcon),
                 onPressed: toggleThemeMode,
               ),
             ],
