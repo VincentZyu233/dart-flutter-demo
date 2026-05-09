@@ -215,7 +215,7 @@ jobs:
 
       - name: Build (macOS x64)
         if: matrix.platform == 'macos'
-        run: flutter build macos --release --no-codesign
+        run: flutter build macos --release
 
       - name: Build (Android APK)
         if: matrix.platform == 'android'
