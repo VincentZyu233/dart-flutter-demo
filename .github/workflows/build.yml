@@ -174,7 +174,7 @@ jobs:
               kt = f.read()
           kt = kt.replace(
               'import io.flutter.embedding.android.FlutterActivity',
-              'import com.example.flutter_showcase.SystemInfoPlugin\nimport io.flutter.embedding.android.FlutterActivity'
+              'import com.example.dart_flutter_demo.SystemInfoPlugin\nimport io.flutter.embedding.android.FlutterActivity'
           )
           kt = kt.replace(
               'super.configureFlutterEngine(flutterEngine)',
