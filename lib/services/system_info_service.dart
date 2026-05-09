@@ -4,13 +4,11 @@ import 'dart:io';
 
 import 'package:flutter/services.dart';
 
-// FFI type defs for Windows C++ exports (using Uint8 instead of Utf8)
 typedef _GetSystemInfoJsonNative = Pointer<Uint8> Function();
 typedef _GetSystemInfoJsonDart = Pointer<Uint8> Function();
 typedef _FreeSystemInfoJsonNative = Void Function(Pointer<Uint8>);
 typedef _FreeSystemInfoJsonDart = void Function(Pointer<Uint8>);
 
-// Helper: convert null-terminated C string to Dart String
 String _ptrToString(Pointer<Uint8> ptr) {
   final bytes = <int>[];
   for (int i = 0;; i++) {
@@ -25,6 +23,42 @@ abstract class SystemInfoService {
   Future<Map<String, String>> getInfo({bool forceRefresh = false});
 }
 
+class SystemInfoDebugSnapshot {
+  final String platform;
+  final String source;
+  final List<String> logs;
+  final Map<String, String> data;
+
+  const SystemInfoDebugSnapshot({
+    required this.platform,
+    required this.source,
+    required this.logs,
+    required this.data,
+  });
+
+  String toMultilineText() {
+    final buffer = StringBuffer()
+      ..writeln('platform: $platform')
+      ..writeln('source: $source')
+      ..writeln('')
+      ..writeln('[data]');
+
+    final sortedEntries = data.entries.toList()
+      ..sort((a, b) => a.key.compareTo(b.key));
+    for (final entry in sortedEntries) {
+      buffer.writeln('${entry.key}: ${entry.value}');
+    }
+
+    buffer
+      ..writeln('')
+      ..writeln('[logs]');
+    for (final line in logs) {
+      buffer.writeln(line);
+    }
+    return buffer.toString();
+  }
+}
+
 SystemInfoService createSystemInfoService() {
   if (Platform.isWindows) return _WindowsSystemInfo();
   if (Platform.isLinux) return _LinuxSystemInfo();
@@ -33,11 +67,115 @@ SystemInfoService createSystemInfoService() {
   throw UnsupportedError('Platform not supported');
 }
 
-// ── iOS (Swift MethodChannel with dart:io fallback) ──────────────────────────
+SystemInfoDebugSnapshot getSystemInfoDebugSnapshot() {
+  if (Platform.isWindows) return _WindowsSystemInfo.debugSnapshot;
+  if (Platform.isLinux) return _LinuxSystemInfo.debugSnapshot;
+  if (Platform.isAndroid) return _AndroidSystemInfo.debugSnapshot;
+  if (Platform.isIOS) return _IOSSystemInfo.debugSnapshot;
+  return SystemInfoDebugSnapshot(
+    platform: Platform.operatingSystem,
+    source: 'unsupported',
+    logs: const ['Debug snapshot unavailable on this platform.'],
+    data: const {},
+  );
+}
+
+Future<File> exportSystemInfoDebugSnapshot() async {
+  final snapshot = getSystemInfoDebugSnapshot();
+  final now = DateTime.now();
+  final filename =
+      'flutter_showcase_system_info_${_timestampForFile(now)}.log';
+  final directory = await _resolveLogExportDirectory();
+  await directory.create(recursive: true);
+  final file = File('${directory.path}${Platform.pathSeparator}$filename');
+  await file.writeAsString(snapshot.toMultilineText());
+  return file;
+}
+
+Future<int> copySystemInfoDebugSnapshotToClipboard({
+  int maxChars = 240000,
+}) async {
+  final snapshot = getSystemInfoDebugSnapshot();
+  final text = snapshot.toMultilineText();
+  final clipped = _clipFromLatest(text, maxChars: maxChars);
+  await Clipboard.setData(ClipboardData(text: clipped));
+  return clipped.length;
+}
+
+String _timestampForFile(DateTime value) {
+  String two(int n) => n.toString().padLeft(2, '0');
+  return '${value.year}${two(value.month)}${two(value.day)}_'
+      '${two(value.hour)}${two(value.minute)}${two(value.second)}';
+}
+
+Future<Directory> _resolveLogExportDirectory() async {
+  if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+    return Directory.current;
+  }
+
+  final temp = Directory.systemTemp;
+  return Directory(
+    '${temp.path}${Platform.pathSeparator}flutter_showcase_logs',
+  );
+}
+
+String _clipFromLatest(String value, {required int maxChars}) {
+  if (value.length <= maxChars) return value;
+  return value.substring(value.length - maxChars);
+}
+
+class _DebugLogBuffer {
+  final List<String> _lines = [];
+
+  void add(String message) {
+    _lines.add('[${DateTime.now().toIso8601String()}] $message');
+  }
+
+  List<String> snapshot() => List<String>.from(_lines);
+}
+
+class _ProcessTrace {
+  final int exitCode;
+  final String stdout;
+  final String stderr;
+
+  const _ProcessTrace({
+    required this.exitCode,
+    required this.stdout,
+    required this.stderr,
+  });
+}
+
+class _WindowsFallbackState {
+  final _DebugLogBuffer debug;
+  final Map<String, String> result;
+
+  _WindowsFallbackState(this.debug, this.result);
+
+  void putIfMissing(String key, String? value) {
+    final trimmed = value?.trim() ?? '';
+    if (trimmed.isEmpty) return;
+    final current = result[key]?.trim() ?? '';
+    if (current.isEmpty || current == 'unknown' || current == 'unavailable') {
+      result[key] = trimmed;
+      debug.add('Filled `$key` from fallback source.');
+    }
+  }
+}
+
+// ── iOS ──────────────────────────────────────────────────────────────────────
 
 class _IOSSystemInfo implements SystemInfoService {
   static const _channel = MethodChannel('flutter_showcase/system_info');
   static Map<String, String>? _cachedInfo;
+  static SystemInfoDebugSnapshot _debugSnapshot = const SystemInfoDebugSnapshot(
+    platform: 'ios',
+    source: 'idle',
+    logs: <String>[],
+    data: <String, String>{},
+  );
+
+  static SystemInfoDebugSnapshot get debugSnapshot => _debugSnapshot;
 
   @override
   Future<Map<String, String>> getInfo({bool forceRefresh = false}) async {
@@ -48,9 +186,22 @@ class _IOSSystemInfo implements SystemInfoService {
       final result = await _channel.invokeMapMethod<String, String>('getInfo');
       if (result != null) {
         _cachedInfo = Map<String, String>.from(result);
+        _debugSnapshot = SystemInfoDebugSnapshot(
+          platform: 'ios',
+          source: 'method-channel',
+          logs: const ['Loaded via iOS method channel.'],
+          data: Map<String, String>.from(result),
+        );
         return Map<String, String>.from(result);
       }
-    } catch (_) {}
+    } catch (e) {
+      _debugSnapshot = SystemInfoDebugSnapshot(
+        platform: 'ios',
+        source: 'fallback',
+        logs: ['MethodChannel failed: $e'],
+        data: const {},
+      );
+    }
     final fallback = _getInfoFallback();
     _cachedInfo = Map<String, String>.from(fallback);
     return fallback;
@@ -61,21 +212,35 @@ class _IOSSystemInfo implements SystemInfoService {
     result['OS'] = Platform.operatingSystemVersion;
     result['Host'] = Platform.localHostname;
     result['Kernel'] = 'Darwin ${Platform.operatingSystemVersion}';
-    result['Uptime'] = 'N/A (fallback)';
+    result['Uptime'] = 'unavailable';
     result['CPU'] = '${Platform.numberOfProcessors} cores';
-    result['Memory'] = 'N/A (fallback)';
-    result['Disk'] = 'N/A (fallback)';
-    result['Local IP'] = 'N/A (fallback)';
+    result['Memory'] = 'unavailable';
+    result['Disk'] = 'unavailable';
+    result['Local IP'] = 'unavailable';
     result['Locale'] = Platform.localeName;
+    _debugSnapshot = SystemInfoDebugSnapshot(
+      platform: 'ios',
+      source: 'fallback',
+      logs: const ['Using basic dart:io fallback on iOS.'],
+      data: Map<String, String>.from(result),
+    );
     return result;
   }
 }
 
-// ── Windows (C++ FFI with dart:io fallback) ──────────────────────────────────
+// ── Windows ──────────────────────────────────────────────────────────────────
 
 class _WindowsSystemInfo implements SystemInfoService {
   static Map<String, String>? _cachedInfo;
   static Future<Map<String, String>>? _inFlight;
+  static SystemInfoDebugSnapshot _debugSnapshot = const SystemInfoDebugSnapshot(
+    platform: 'windows',
+    source: 'idle',
+    logs: <String>[],
+    data: <String, String>{},
+  );
+
+  static SystemInfoDebugSnapshot get debugSnapshot => _debugSnapshot;
 
   @override
   Future<Map<String, String>> getInfo({bool forceRefresh = false}) {
@@ -103,92 +268,331 @@ class _WindowsSystemInfo implements SystemInfoService {
   }
 
   static Map<String, String> _getInfoSync() {
+    final debug = _DebugLogBuffer();
+    debug.add('Windows system info request started.');
+
     try {
+      debug.add('Trying FFI via DynamicLibrary.process().');
       final dylib = DynamicLibrary.process();
-      final getJson = dylib.lookupFunction<_GetSystemInfoJsonNative, _GetSystemInfoJsonDart>('GetSystemInfoJson');
-      final freeJson = dylib.lookupFunction<_FreeSystemInfoJsonNative, _FreeSystemInfoJsonDart>('FreeSystemInfoJson');
+      final getJson = dylib.lookupFunction<_GetSystemInfoJsonNative, _GetSystemInfoJsonDart>(
+        'GetSystemInfoJson',
+      );
+      final freeJson = dylib.lookupFunction<_FreeSystemInfoJsonNative, _FreeSystemInfoJsonDart>(
+        'FreeSystemInfoJson',
+      );
 
       final ptr = getJson();
       final jsonStr = _ptrToString(ptr);
       freeJson(ptr);
+      debug.add('FFI JSON length=${jsonStr.length}.');
 
       final decoded = jsonDecode(jsonStr) as Map<String, dynamic>;
       final result = decoded.map((k, v) => MapEntry(k, v.toString()));
       result['Locale'] = _normalizeWindowsLocale(result['Locale']);
+      _recordWindowsDebug(
+        source: 'ffi',
+        logs: debug.snapshot(),
+        data: result,
+      );
       return result;
-    } catch (_) {
-      return _getInfoFallback();
-    }
-  }
-
-  static Map<String, String> _getInfoFallback() {
-    final result = <String, String>{};
-    result['OS'] = Platform.operatingSystemVersion;
-    result['Host'] = Platform.localHostname;
-    result['Kernel'] = 'Windows ${Platform.operatingSystemVersion}';
-
-    // Prefer the standalone .ps1 file (maintained at plugins/windows/SystemInfo.ps1).
-    // Falls back to inline script if the file is not found (e.g. production build).
-    List<String>? psOutput;
-    try {
-      final ps1 = File(r'plugins\windows\SystemInfo.ps1');
-      if (ps1.existsSync()) {
-        psOutput = Process.runSync(
-          'powershell', ['-NoProfile', '-File', ps1.absolute.path],
-          runInShell: true,
-        ).stdout.toString().split('\n');
-      }
-    } catch (_) {}
-
-    psOutput ??= _runInlinePowerShell();
-
-    for (final line in psOutput!) {
-      final l = line.trim();
-      if (l.startsWith('UPTIME|')) {
-        final raw = l.substring(7);
-        final dt = DateTime.tryParse(raw);
-        if (dt != null) {
-          result['Uptime'] = _formatDuration(DateTime.now().toUtc().difference(dt));
-        } else {
-          result['Uptime'] = raw;
-        }
-      } else if (l.startsWith('CPU|')) {
-        result['CPU'] = l.substring(4).trim();
-      } else if (l.startsWith('MEM|')) {
-        result['Memory'] = l.substring(4).trim();
-      } else if (l.startsWith('DISK|')) {
-        result['Disk (C:\\)'] = l.substring(5).trim();
-      } else if (l.startsWith('NET|')) {
-        result['Local IP'] = l.substring(4).trim();
-      }
+    } catch (e) {
+      debug.add('FFI failed: $e');
     }
 
-    result.putIfAbsent('Uptime', () => 'unknown');
-    result.putIfAbsent('CPU', () => '${Platform.numberOfProcessors} cores');
-    result.putIfAbsent('Memory', () => 'unknown');
-    result.putIfAbsent('Disk (C:\\)', () => 'unknown');
-    result.putIfAbsent('Local IP', () => 'unknown');
-    result['Locale'] = _normalizeWindowsLocale(Platform.localeName);
+    final result = <String, String>{
+      'OS': Platform.operatingSystemVersion,
+      'Host': Platform.localHostname,
+      'Kernel': 'Windows ${Platform.operatingSystemVersion}',
+      'Uptime': 'unavailable',
+      'CPU': '${Platform.numberOfProcessors} cores',
+      'Memory': 'unavailable',
+      'Disk (C:\\)': 'unavailable',
+      'Local IP': 'unavailable',
+      'Locale': _normalizeWindowsLocale(Platform.localeName),
+    };
+
+    final state = _WindowsFallbackState(debug, result);
+    debug.add('Entering fallback chain.');
+    _tryStandalonePs1(state);
+    _tryInlinePowerShell(state);
+    _tryNativeCommands(state);
+
+    _recordWindowsDebug(
+      source: 'fallback',
+      logs: debug.snapshot(),
+      data: result,
+    );
     return result;
   }
 
-  static List<String> _runInlinePowerShell() {
-    final script = [
-      '-NoProfile', '-Command',
-      r'''
+  static void _recordWindowsDebug({
+    required String source,
+    required List<String> logs,
+    required Map<String, String> data,
+  }) {
+    _debugSnapshot = SystemInfoDebugSnapshot(
+      platform: 'windows',
+      source: source,
+      logs: logs,
+      data: Map<String, String>.from(data),
+    );
+  }
+
+  static void _tryStandalonePs1(_WindowsFallbackState state) {
+    final ps1 = File(r'plugins\windows\SystemInfo.ps1');
+    state.debug.add('Checking PS1 path: ${ps1.absolute.path}');
+    if (!ps1.existsSync()) {
+      state.debug.add('Standalone PS1 file not found.');
+      return;
+    }
+
+    final trace = _runProcess(
+      state.debug,
+      'powershell',
+      ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', ps1.absolute.path],
+      label: 'PS1 file',
+    );
+    _ingestTaggedOutput(state, trace.stdout, source: 'ps1');
+  }
+
+  static void _tryInlinePowerShell(_WindowsFallbackState state) {
+    final script = r'''
 $os = Get-CimInstance Win32_OperatingSystem
 $cs = Get-CimInstance Win32_ComputerSystem
 $cpu = Get-CimInstance Win32_Processor | Select-Object -First 1
 $disk = Get-CimInstance Win32_LogicalDisk -Filter "DeviceID='C:'"
-$net = Get-NetAdapter | Where-Object Status -eq 'Up' | Select-Object -First 1
+$ip = Get-NetIPAddress -AddressFamily IPv4 -PrefixOrigin Dhcp,Manual |
+  Where-Object {
+    $_.IPAddress -notlike '127.*' -and
+    $_.IPAddress -notlike '169.254.*'
+  } |
+  Select-Object -First 1
 Write-Output "UPTIME|$($os.LastBootUpTime)"
 Write-Output "CPU|$($cpu.Name) ($($cpu.NumberOfLogicalProcessors) cores)"
-Write-Output "MEM|$([math]::Round($cs.TotalPhysicalMemory/1GB,1)) GiB total"
-Write-Output "DISK|$([math]::Round($disk.Size/1GB,1)) GiB total $([math]::Round(($disk.Size-$disk.FreeSpace)/1GB,1)) GiB used"
-Write-Output "NET|$($net.Name)"
-'''
-    ];
-    return Process.runSync('powershell', script, runInShell: true).stdout.toString().split('\n');
+Write-Output "MEM|$([math]::Round(($cs.TotalPhysicalMemory / 1GB), 2)) GiB total"
+Write-Output "DISK|$([math]::Round(($disk.Size - $disk.FreeSpace) / 1GB, 2)) GiB / $([math]::Round($disk.Size / 1GB, 2)) GiB"
+Write-Output "NET|$($ip.IPAddress)"
+''';
+    final trace = _runProcess(
+      state.debug,
+      'powershell',
+      ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', script],
+      label: 'Inline PowerShell',
+    );
+    _ingestTaggedOutput(state, trace.stdout, source: 'inline-powershell');
+  }
+
+  static void _tryNativeCommands(_WindowsFallbackState state) {
+    state.debug.add('Trying native command fallbacks.');
+
+    final uptime = _runProcess(
+      state.debug,
+      'cmd',
+      ['/c', 'net stats workstation'],
+      label: 'net stats workstation',
+    );
+    state.putIfMissing('Uptime', _extractNetStatsUptime(uptime.stdout));
+
+    final cpuName = _runProcess(
+      state.debug,
+      'reg',
+      ['query', r'HKLM\HARDWARE\DESCRIPTION\System\CentralProcessor\0', '/v', 'ProcessorNameString'],
+      label: 'reg cpu name',
+    );
+    final cpuSpeed = _runProcess(
+      state.debug,
+      'reg',
+      ['query', r'HKLM\HARDWARE\DESCRIPTION\System\CentralProcessor\0', '/v', '~MHz'],
+      label: 'reg cpu speed',
+    );
+    final cpuValue = _mergeCpuFallback(cpuName.stdout, cpuSpeed.stdout);
+    state.putIfMissing('CPU', cpuValue);
+
+    final memory = _runProcess(
+      state.debug,
+      'wmic',
+      ['OS', 'get', 'FreePhysicalMemory,TotalVisibleMemorySize', '/Value'],
+      label: 'wmic memory',
+    );
+    state.putIfMissing('Memory', _extractWmicMemory(memory.stdout));
+
+    final disk = _runProcess(
+      state.debug,
+      'wmic',
+      ['logicaldisk', 'where', "DeviceID='C:'", 'get', 'FreeSpace,Size', '/Value'],
+      label: 'wmic disk',
+    );
+    state.putIfMissing('Disk (C:\\)', _extractWmicDisk(disk.stdout));
+
+    final ip = _runProcess(
+      state.debug,
+      'ipconfig',
+      [],
+      label: 'ipconfig',
+    );
+    state.putIfMissing('Local IP', _extractIpconfigIPv4(ip.stdout));
+  }
+
+  static void _ingestTaggedOutput(
+    _WindowsFallbackState state,
+    String stdout, {
+    required String source,
+  }) {
+    final lines = stdout.split(RegExp(r'\r?\n'));
+    var matchedAny = false;
+    for (final rawLine in lines) {
+      final line = rawLine.trim();
+      if (line.isEmpty) continue;
+      if (line.startsWith('UPTIME|')) {
+        matchedAny = true;
+        final raw = line.substring(7).trim();
+        final dt = DateTime.tryParse(raw);
+        state.putIfMissing(
+          'Uptime',
+          dt != null
+              ? _formatDuration(DateTime.now().toUtc().difference(dt))
+              : raw,
+        );
+      } else if (line.startsWith('CPU|')) {
+        matchedAny = true;
+        state.putIfMissing('CPU', line.substring(4).trim());
+      } else if (line.startsWith('MEM|')) {
+        matchedAny = true;
+        state.putIfMissing('Memory', line.substring(4).trim());
+      } else if (line.startsWith('DISK|')) {
+        matchedAny = true;
+        state.putIfMissing('Disk (C:\\)', line.substring(5).trim());
+      } else if (line.startsWith('NET|')) {
+        matchedAny = true;
+        state.putIfMissing('Local IP', line.substring(4).trim());
+      }
+    }
+
+    if (matchedAny) {
+      state.debug.add('Parsed tagged output from $source.');
+    } else {
+      state.debug.add('No tagged output parsed from $source.');
+    }
+  }
+
+  static _ProcessTrace _runProcess(
+    _DebugLogBuffer debug,
+    String executable,
+    List<String> arguments, {
+    required String label,
+  }) {
+    try {
+      final result = Process.runSync(executable, arguments, runInShell: true);
+      final stdout = result.stdout.toString();
+      final stderr = result.stderr.toString();
+      debug.add('$label exitCode=${result.exitCode}');
+      if (stdout.trim().isEmpty) {
+        debug.add('$label stdout is empty.');
+      } else {
+        debug.add('$label stdout:\n${_clipDebugText(stdout)}');
+      }
+      if (stderr.trim().isNotEmpty) {
+        debug.add('$label stderr:\n${_clipDebugText(stderr)}');
+      }
+      return _ProcessTrace(
+        exitCode: result.exitCode,
+        stdout: stdout,
+        stderr: stderr,
+      );
+    } catch (e) {
+      debug.add('$label failed: $e');
+      return const _ProcessTrace(exitCode: -1, stdout: '', stderr: '');
+    }
+  }
+
+  static String? _extractNetStatsUptime(String stdout) {
+    for (final line in stdout.split(RegExp(r'\r?\n'))) {
+      final trimmed = line.trim();
+      if (trimmed.startsWith('Statistics since')) {
+        final raw = trimmed.substring('Statistics since'.length).trim();
+        return raw.isEmpty ? null : raw;
+      }
+    }
+    return null;
+  }
+
+  static String? _mergeCpuFallback(String cpuNameOutput, String cpuSpeedOutput) {
+    final name = _extractRegValue(cpuNameOutput);
+    final mhz = _extractRegValue(cpuSpeedOutput);
+    if ((name ?? '').isEmpty) return null;
+
+    final cores = Platform.numberOfProcessors;
+    final buffer = StringBuffer()..write(name!.trim())..write(' ($cores)');
+    final parsedMhz = int.tryParse((mhz ?? '').trim());
+    if (parsedMhz != null && parsedMhz > 0) {
+      final ghz = (parsedMhz / 1000.0).toStringAsFixed(2);
+      buffer.write(' @ $ghz GHz');
+    }
+    return buffer.toString();
+  }
+
+  static String? _extractRegValue(String stdout) {
+    for (final line in stdout.split(RegExp(r'\r?\n'))) {
+      final trimmed = line.trim();
+      if (trimmed.isEmpty) continue;
+      if (trimmed.contains('REG_')) {
+        final match = RegExp(r'REG_\w+\s+(.*)$').firstMatch(trimmed);
+        if (match != null) return match.group(1)?.trim();
+      }
+    }
+    return null;
+  }
+
+  static String? _extractWmicMemory(String stdout) {
+    final values = _parseKeyValueLines(stdout);
+    final freeKiB = int.tryParse(values['FreePhysicalMemory'] ?? '');
+    final totalKiB = int.tryParse(values['TotalVisibleMemorySize'] ?? '');
+    if (freeKiB == null || totalKiB == null || totalKiB <= 0) return null;
+    final usedKiB = totalKiB - freeKiB;
+    final usedGiB = usedKiB / (1024.0 * 1024.0);
+    final totalGiB = totalKiB / (1024.0 * 1024.0);
+    final pct = ((usedKiB / totalKiB) * 100).round();
+    return '${usedGiB.toStringAsFixed(2)} GiB / ${totalGiB.toStringAsFixed(2)} GiB ($pct%)';
+  }
+
+  static String? _extractWmicDisk(String stdout) {
+    final values = _parseKeyValueLines(stdout);
+    final freeBytes = int.tryParse(values['FreeSpace'] ?? '');
+    final totalBytes = int.tryParse(values['Size'] ?? '');
+    if (freeBytes == null || totalBytes == null || totalBytes <= 0) return null;
+    final usedBytes = totalBytes - freeBytes;
+    final usedGiB = usedBytes / (1024.0 * 1024.0 * 1024.0);
+    final totalGiB = totalBytes / (1024.0 * 1024.0 * 1024.0);
+    final pct = ((usedBytes / totalBytes) * 100).round();
+    return '${usedGiB.toStringAsFixed(2)} GiB / ${totalGiB.toStringAsFixed(2)} GiB ($pct%)';
+  }
+
+  static Map<String, String> _parseKeyValueLines(String stdout) {
+    final result = <String, String>{};
+    for (final line in stdout.split(RegExp(r'\r?\n'))) {
+      final index = line.indexOf('=');
+      if (index <= 0) continue;
+      final key = line.substring(0, index).trim();
+      final value = line.substring(index + 1).trim();
+      if (key.isNotEmpty) {
+        result[key] = value;
+      }
+    }
+    return result;
+  }
+
+  static String? _extractIpconfigIPv4(String stdout) {
+    for (final line in stdout.split(RegExp(r'\r?\n'))) {
+      if (!line.contains('IPv4')) continue;
+      final match = RegExp(r'(\d{1,3}(?:\.\d{1,3}){3})').firstMatch(line);
+      if (match != null) {
+        final ip = match.group(1)!;
+        if (!ip.startsWith('127.') && !ip.startsWith('169.254.')) {
+          return ip;
+        }
+      }
+    }
+    return null;
   }
 
   static String _formatDuration(Duration d) {
@@ -200,6 +604,7 @@ Write-Output "NET|$($net.Name)"
     buf.write('$hours hours, $mins mins');
     return buf.toString();
   }
+
   static String _normalizeWindowsLocale(String? locale) {
     final trimmed = locale?.trim() ?? '';
     if (trimmed.isNotEmpty &&
@@ -209,13 +614,27 @@ Write-Output "NET|$($net.Name)"
     }
     return trimmed.isNotEmpty ? trimmed : 'unknown';
   }
+
+  static String _clipDebugText(String value, {int maxChars = 2000}) {
+    final normalized = value.replaceAll('\r\n', '\n').trim();
+    if (normalized.length <= maxChars) return normalized;
+    return '${normalized.substring(0, maxChars)}\n...<truncated>';
+  }
 }
 
-// ── Linux (dart:io) ──────────────────────────────────────────────────────────
+// ── Linux ────────────────────────────────────────────────────────────────────
 
 class _LinuxSystemInfo implements SystemInfoService {
   static Map<String, String>? _cachedInfo;
   static Future<Map<String, String>>? _inFlight;
+  static SystemInfoDebugSnapshot _debugSnapshot = const SystemInfoDebugSnapshot(
+    platform: 'linux',
+    source: 'idle',
+    logs: <String>[],
+    data: <String, String>{},
+  );
+
+  static SystemInfoDebugSnapshot get debugSnapshot => _debugSnapshot;
 
   @override
   Future<Map<String, String>> getInfo({bool forceRefresh = false}) {
@@ -243,7 +662,7 @@ class _LinuxSystemInfo implements SystemInfoService {
   }
 
   static Map<String, String> _getInfoSync() {
-    return {
+    final result = {
       'OS': _getOS(),
       'Host': _getHostname(),
       'Kernel': _getKernel(),
@@ -254,6 +673,13 @@ class _LinuxSystemInfo implements SystemInfoService {
       'Local IP': _getLocalIP(),
       'Locale': _getLocale(),
     };
+    _debugSnapshot = SystemInfoDebugSnapshot(
+      platform: 'linux',
+      source: 'dart-io',
+      logs: const ['Loaded via Linux dart:io implementation.'],
+      data: Map<String, String>.from(result),
+    );
+    return result;
   }
 
   static String _readFile(String path) {
@@ -347,12 +773,14 @@ class _LinuxSystemInfo implements SystemInfoService {
     for (final line in content.split('\n')) {
       if (line.startsWith('MemTotal:')) {
         memTotal = int.tryParse(
-                line.split(':').last.trim().split(' ').first) ??
+              line.split(':').last.trim().split(' ').first,
+            ) ??
             0;
       }
       if (line.startsWith('MemAvailable:')) {
         memAvail = int.tryParse(
-                line.split(':').last.trim().split(' ').first) ??
+              line.split(':').last.trim().split(' ').first,
+            ) ??
             0;
       }
     }
@@ -366,11 +794,10 @@ class _LinuxSystemInfo implements SystemInfoService {
 
   static String _getDisk(String mount) {
     try {
-      final stat = FileStat.statSync(mount);
-      final total = stat.size;
-      final free = stat.size - stat.size; // not possible via dart:io
-      // Use process to get df
-      final result = Process.runSync('df', ['-B1', '--output=size,used,avail', mount]);
+      final result = Process.runSync(
+        'df',
+        ['-B1', '--output=size,used,avail', mount],
+      );
       if (result.exitCode == 0) {
         final lines = result.stdout.toString().trim().split('\n');
         if (lines.length >= 2) {
@@ -411,11 +838,19 @@ class _LinuxSystemInfo implements SystemInfoService {
   }
 }
 
-// ── Android (Kotlin MethodChannel) ───────────────────────────────────────────
+// ── Android ──────────────────────────────────────────────────────────────────
 
 class _AndroidSystemInfo implements SystemInfoService {
   static const _channel = MethodChannel('flutter_showcase/system_info');
   static Map<String, String>? _cachedInfo;
+  static SystemInfoDebugSnapshot _debugSnapshot = const SystemInfoDebugSnapshot(
+    platform: 'android',
+    source: 'idle',
+    logs: <String>[],
+    data: <String, String>{},
+  );
+
+  static SystemInfoDebugSnapshot get debugSnapshot => _debugSnapshot;
 
   @override
   Future<Map<String, String>> getInfo({bool forceRefresh = false}) async {
@@ -425,6 +860,12 @@ class _AndroidSystemInfo implements SystemInfoService {
     final result = await _channel.invokeMapMethod<String, String>('getInfo');
     final info = result ?? {};
     _cachedInfo = Map<String, String>.from(info);
+    _debugSnapshot = SystemInfoDebugSnapshot(
+      platform: 'android',
+      source: 'method-channel',
+      logs: const ['Loaded via Android method channel.'],
+      data: Map<String, String>.from(info),
+    );
     return Map<String, String>.from(info);
   }
 }

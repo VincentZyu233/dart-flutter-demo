@@ -1,40 +1,28 @@
 # Flutter Showcase
 
-A multi-platform PoC(Proof of Concept) app demonstrating Flutter's UI capabilities across Android, Windows, and Linux.
+A cross-platform Flutter UI showcase PoC (Proof of Concept) app for Android, Windows, and Linux.
 
 ## Pages
 
 ### 0. System Info
 
-Displays system info via native C++ (Windows) and Kotlin (Android) plugins, plus dart:io (Linux). Shows OS, hostname, kernel, uptime, CPU, memory, disk, and local IP. Proves Flutter bridges seamlessly to platform-specific code.
+Displays system information through native C++ (Windows) and Kotlin (Android) integration, plus dart:io on Linux. Shows OS, hostname, kernel, uptime, CPU, memory, disk, and local IP. Includes a built-in debug trace panel for inspecting collection logs and exportable diagnostics.
 
 ### 1. Dialog Lab
 
-A pixel-perfect recreation of a classic Win32 dialog box. Demonstrates Flutter's ability to reproduce any UI style — retro 3D borders, inset shadows, and era-accurate color schemes. Proves that Flutter doesn't depend on native system components.
+A pixel-accurate recreation of a classic Win32 dialog. Uses retro borders, inset input styling, and period-appropriate color treatment to demonstrate that Flutter can reproduce non-native UI conventions without depending on system widgets.
 
 ### 2. Typography Studio
 
-Interactive text playground. Adjust font size, letter spacing, line height with real-time sliders. Toggle between system font and a custom serif font (Google Fonts). Pick text colors. Shows off Flutter's smooth text rendering engine.
+An interactive text playground. Adjust font size, letter spacing, and line height with live controls. Switch between the system font and a custom serif font from Google Fonts. Useful for checking text rendering, spacing, and visual rhythm.
 
 ### 3. Adaptive Grid
 
-A responsive masonry-style card grid. Uses `LayoutBuilder` to monitor screen width. Automatically switches between 1, 2, or 3 columns based on device. Drag to resize the window and watch the layout adapt instantly.
+A responsive card grid driven by `LayoutBuilder`. Automatically switches between 1, 2, or 3 columns based on available width. Useful for validating resize behavior on desktop and layout adaptation across device sizes.
 
-### 4. Motion Lab
+### 4. Controls & Feedback
 
-A simulated registration form with staggered fade-in/slide entrance animations. Real-time input validation — type "admin" and watch the error message bounce. Submit button triggers a linear progress animation. Shows 60/120 FPS rendering with simple state management.
-
-### 5. Navigation Hub
-
-Demonstrates three navigation patterns working together: `TabBar`, `Drawer`, and `BottomNavigationBar`. Features Hero animations that let elements fly between pages. Includes a Stack overlay demo and a Wrap layout demo.
-
-### 6. Data Feed
-
-A long scrolling list with pull-to-refresh and infinite scroll. Each card contains a random avatar, name, and placeholder text. Toggle between list view and grid view with the toolbar button. Proves Flutter handles thousands of items without jank.
-
-### 7. Controls & Feedback
-
-All the interactive controls you need in one place: Radio buttons, Checkboxes, Switches. Press "Start Process" to watch a combined linear + circular progress animation. Trigger SnackBars and BottomSheets for feedback patterns.
+A compact lab for interactive controls and user feedback. Includes radios, checkboxes, switches, progress indicators, snack bars, and bottom sheets. Useful for checking state transitions, motion, and component responsiveness.
 
 ## Build & Run
 
@@ -53,11 +41,11 @@ flutter build apk --release
 
 ## CI/CD
 
-GitHub Actions workflow handles automated builds. Push a commit containing `build action` or `build release` to trigger the pipeline. See [build.md](.github/workflows/build.md) for details.
+GitHub Actions handles automated builds and packaging. Push a commit containing `build action` or `build release` to trigger the pipeline. See [build.md](.github/workflows/build.md) for details.
 
 ## Tech Stack
 
 - Flutter (stable channel)
 - Material 3 design system
 - Google Fonts plugin
-- State management: setState (keep it simple for a PoC)
+- State management: setState (kept intentionally simple for a PoC)

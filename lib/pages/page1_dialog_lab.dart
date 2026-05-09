@@ -173,7 +173,7 @@ class _ModernDialogState extends State<_ModernDialog>
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Information',
+                'A Short Title Is Best',
                 style: theme.textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.bold,
                 ),
@@ -198,8 +198,8 @@ class _ModernDialogState extends State<_ModernDialog>
       children: [
         TextField(
           decoration: InputDecoration(
-            labelText: 'Name',
-            hintText: 'Enter your name',
+            labelText: 'Default',
+            hintText: 'Type Something Here',
             prefixIcon: const Icon(Icons.person_outline),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
@@ -209,8 +209,8 @@ class _ModernDialogState extends State<_ModernDialog>
         const SizedBox(height: 12),
         TextField(
           decoration: InputDecoration(
-            labelText: 'Value',
-            hintText: 'Enter a value',
+            labelText: 'Default2',
+            hintText: 'Type Something Here2',
             prefixIcon: const Icon(Icons.tag),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
@@ -360,9 +360,9 @@ class _Win32DialogState extends State<_Win32Dialog> {
           style: TextStyle(fontSize: 13, color: Colors.black87),
         ),
         const SizedBox(height: 16),
-        _winInsetField('Field 1'),
+        _winInsetField('Default'),
         const SizedBox(height: 8),
-        _winInsetField('Field 2'),
+        _winInsetField('Default2'),
         const SizedBox(height: 20),
         _buildButtons(),
       ],
@@ -414,7 +414,7 @@ class _Win32DialogState extends State<_Win32Dialog> {
           height: 28,
           child: ElevatedButton(
             onPressed: () {
-              if (isPrimary) Navigator.of(context).pop();
+              Navigator.of(context).pop();
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: _winGray,

@@ -8,6 +8,7 @@
 #include <iphlpapi.h>
 #include <psapi.h>
 #include <sysinfoapi.h>
+#include <netioapi.h>
 
 #include <codecvt>
 #include <locale>
@@ -15,11 +16,27 @@
 #include <sstream>
 #include <cstring>
 #include <cstdlib>
+#include <iomanip>
 
 #pragma comment(lib, "psapi.lib")
 #pragma comment(lib, "iphlpapi.lib")
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
+
+typedef struct RawSMBIOSData {
+  BYTE Used20CallingMethod;
+  BYTE SMBIOSMajorVersion;
+  BYTE SMBIOSMinorVersion;
+  BYTE DmiRevision;
+  DWORD Length;
+  BYTE SMBIOSTableData[];
+} RawSMBIOSData;
+
+typedef struct SMBIOSHeader {
+  BYTE Type;
+  BYTE Length;
+  WORD Handle;
+} SMBIOSHeader;
 
 static std::string WStringToString(const std::wstring& wstr) {
   if (wstr.empty()) return "";
@@ -57,6 +74,87 @@ static std::string ToJson(const std::string& key, const std::string& value) {
   return "{\"" + EscapeJson(key) + "\":\"" + EscapeJson(value) + "\"}";
 }
 
+static std::string Trim(const std::string& value) {
+  const char* whitespace = " \t\r\n";
+  const auto start = value.find_first_not_of(whitespace);
+  if (start == std::string::npos) return "";
+  const auto end = value.find_last_not_of(whitespace);
+  return value.substr(start, end - start + 1);
+}
+
+static bool IsPlaceholderValue(const std::string& value) {
+  if (value.empty()) return true;
+  const std::string trimmed = Trim(value);
+  return trimmed.empty() ||
+         trimmed == "To be filled by O.E.M." ||
+         trimmed == "To Be Filled By O.E.M." ||
+         trimmed == "System Product Name" ||
+         trimmed == "System Version" ||
+         trimmed == "Default string";
+}
+
+static std::string ReadSmbiosString(const BYTE* stringArea, BYTE index) {
+  if (index == 0) return "";
+
+  BYTE current = 1;
+  const char* ptr = reinterpret_cast<const char*>(stringArea);
+  while (*ptr) {
+    if (current == index) return Trim(ptr);
+    ptr += strlen(ptr) + 1;
+    ++current;
+  }
+  return "";
+}
+
+struct HostInfo {
+  std::string vendor;
+  std::string family;
+  std::string name;
+  std::string version;
+};
+
+static bool ReadHostInfoFromSmbios(HostInfo* out) {
+  const DWORD bufferSize = GetSystemFirmwareTable('RSMB', 0, nullptr, 0);
+  if (bufferSize == 0) return false;
+
+  BYTE* buffer = reinterpret_cast<BYTE*>(malloc(bufferSize));
+  if (!buffer) return false;
+
+  const UINT bytesWritten = GetSystemFirmwareTable('RSMB', 0, buffer, bufferSize);
+  if (bytesWritten != bufferSize) {
+    free(buffer);
+    return false;
+  }
+
+  const auto* raw = reinterpret_cast<const RawSMBIOSData*>(buffer);
+  const BYTE* ptr = raw->SMBIOSTableData;
+  const BYTE* end = raw->SMBIOSTableData + raw->Length;
+
+  while (ptr + sizeof(SMBIOSHeader) < end) {
+    const auto* header = reinterpret_cast<const SMBIOSHeader*>(ptr);
+    if (header->Length == 0 || ptr + header->Length > end) break;
+
+    const BYTE* stringArea = ptr + header->Length;
+    const BYTE* next = stringArea;
+    while (next + 1 < end && !(next[0] == 0 && next[1] == 0)) ++next;
+    if (next + 1 >= end) break;
+
+    if (header->Type == 1 && header->Length >= 0x1B) {
+      out->vendor = ReadSmbiosString(stringArea, ptr[0x04]);
+      out->name = ReadSmbiosString(stringArea, ptr[0x05]);
+      out->version = ReadSmbiosString(stringArea, ptr[0x06]);
+      out->family = ReadSmbiosString(stringArea, ptr[0x1A]);
+      free(buffer);
+      return true;
+    }
+
+    ptr = next + 2;
+  }
+
+  free(buffer);
+  return false;
+}
+
 // ── OS Info ──────────────────────────────────────────────────────────────────
 
 static std::string GetOSVersion() {
@@ -71,6 +169,7 @@ static std::string GetOSVersion() {
   if (rtlGetVersion(&osvi) != 0) return "Windows (unknown version)";
 
   std::string edition = "Windows";
+  std::string displayVersion;
   HKEY hKey;
   if (RegOpenKeyExW(HKEY_LOCAL_MACHINE,
       L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion", 0,
@@ -80,6 +179,11 @@ static std::string GetOSVersion() {
     if (RegQueryValueExW(hKey, L"ProductName", nullptr, nullptr,
                          (LPBYTE)buf, &size) == ERROR_SUCCESS) {
       edition = WStringToString(buf);
+    }
+    size = sizeof(buf);
+    if (RegQueryValueExW(hKey, L"DisplayVersion", nullptr, nullptr,
+                         (LPBYTE)buf, &size) == ERROR_SUCCESS) {
+      displayVersion = WStringToString(buf);
     }
     RegCloseKey(hKey);
   }
@@ -95,8 +199,9 @@ static std::string GetOSVersion() {
   }
 
   std::ostringstream ss;
-  ss << edition << " " << osvi.dwMajorVersion << "." << osvi.dwMinorVersion
-     << " (Build " << osvi.dwBuildNumber << ") " << arch;
+  ss << edition;
+  if (!displayVersion.empty()) ss << " (" << displayVersion << ")";
+  ss << " " << arch;
   return ss.str();
 }
 
@@ -107,6 +212,20 @@ static std::string GetHostname() {
     return WStringToString(std::wstring(buf, size));
   }
   return "unknown";
+}
+
+static std::string GetHostLabel() {
+  HostInfo hostInfo;
+  if (ReadHostInfoFromSmbios(&hostInfo)) {
+    if (!IsPlaceholderValue(hostInfo.name)) {
+      if (!IsPlaceholderValue(hostInfo.version)) {
+        return hostInfo.name + " (" + hostInfo.version + ")";
+      }
+      return hostInfo.name;
+    }
+    if (!IsPlaceholderValue(hostInfo.family)) return hostInfo.family;
+  }
+  return GetHostname();
 }
 
 static std::string GetKernelVersion() {
@@ -157,9 +276,12 @@ static std::string GetCPUInfo() {
     RegCloseKey(hKey);
   }
 
-  SYSTEM_INFO si;
-  GetSystemInfo(&si);
-  DWORD cores = si.dwNumberOfProcessors;
+  DWORD cores = GetActiveProcessorCount(ALL_PROCESSOR_GROUPS);
+  if (cores == 0) {
+    SYSTEM_INFO si;
+    GetSystemInfo(&si);
+    cores = si.dwNumberOfProcessors;
+  }
 
   DWORD maxMHz = 0;
   if (RegOpenKeyExW(HKEY_LOCAL_MACHINE,
@@ -172,6 +294,7 @@ static std::string GetCPUInfo() {
   }
 
   std::ostringstream ss;
+  ss << std::fixed << std::setprecision(2);
   ss << cpuName;
   ss << " (" << cores << ")";
   if (maxMHz > 0) ss << " @ " << (maxMHz / 1000.0) << " GHz";
@@ -251,7 +374,18 @@ static std::string GetLocalIP() {
     return "unknown";
   }
 
+  DWORD defaultIfIndex = 0;
+  MIB_IPFORWARDROW route = {};
+  SOCKADDR_IN destination = {};
+  destination.sin_family = AF_INET;
+  SOCKADDR_IN source = {};
+  source.sin_family = AF_INET;
+  if (GetBestRoute(destination.sin_addr.S_un.S_addr, source.sin_addr.S_un.S_addr, &route) == NO_ERROR) {
+    defaultIfIndex = route.dwForwardIfIndex;
+  }
+
   std::string ip = "unknown";
+  std::string fallbackIp = "unknown";
   for (auto adapter = adapters; adapter != nullptr; adapter = adapter->Next) {
     if (adapter->IfType == IF_TYPE_SOFTWARE_LOOPBACK ||
         adapter->OperStatus != IfOperStatusUp) {
@@ -267,12 +401,24 @@ static std::string GetLocalIP() {
       char buf[INET_ADDRSTRLEN] = {};
       auto* ipv4 = reinterpret_cast<sockaddr_in*>(addr->Address.lpSockaddr);
       if (inet_ntop(AF_INET, &ipv4->sin_addr, buf, sizeof(buf))) {
-        ip = buf;
-        break;
+        if (strncmp(buf, "127.", 4) == 0 || strncmp(buf, "169.254.", 8) == 0) {
+          continue;
+        }
+        if (adapter->IfIndex == defaultIfIndex) {
+          ip = buf;
+          break;
+        }
+        if (fallbackIp == "unknown") {
+          fallbackIp = buf;
+        }
       }
     }
 
     if (ip != "unknown") break;
+  }
+
+  if (ip == "unknown") {
+    ip = fallbackIp;
   }
 
   free(adapters);
@@ -290,14 +436,31 @@ static std::string GetLocale() {
   return "unknown";
 }
 
+static std::string GetBuildKernelVersion() {
+  using RtlGetVersion = LONG(WINAPI*)(PRTL_OSVERSIONINFOW);
+  auto rtlGetVersion = (RtlGetVersion)GetProcAddress(
+      GetModuleHandleW(L"ntdll.dll"), "RtlGetVersion");
+
+  if (!rtlGetVersion) return "WIN32_NT";
+
+  RTL_OSVERSIONINFOW osvi = {};
+  osvi.dwOSVersionInfoSize = sizeof(osvi);
+  if (rtlGetVersion(&osvi) != 0) return "WIN32_NT";
+
+  std::ostringstream ss;
+  ss << "WIN32_NT " << osvi.dwMajorVersion << "."
+     << osvi.dwMinorVersion << "." << osvi.dwBuildNumber;
+  return ss.str();
+}
+
 // ── JSON Builder ─────────────────────────────────────────────────────────────
 
 static std::string BuildInfoJson() {
   std::ostringstream json;
   json << "{";
   json << "\"OS\":\"" << EscapeJson(GetOSVersion()) << "\",";
-  json << "\"Host\":\"" << EscapeJson(GetHostname()) << "\",";
-  json << "\"Kernel\":\"" << EscapeJson(GetKernelVersion()) << "\",";
+  json << "\"Host\":\"" << EscapeJson(GetHostLabel()) << "\",";
+  json << "\"Kernel\":\"" << EscapeJson(GetBuildKernelVersion()) << "\",";
   json << "\"Uptime\":\"" << EscapeJson(GetUptime()) << "\",";
   json << "\"CPU\":\"" << EscapeJson(GetCPUInfo()) << "\",";
   json << "\"Memory\":\"" << EscapeJson(GetMemoryInfo()) << "\",";
