@@ -228,134 +228,163 @@ class _Page3AdaptiveGridState extends State<Page3AdaptiveGrid> {
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: theme.colorScheme.outlineVariant),
       ),
-      child: ExpansionTile(
-        key: const PageStorageKey('page3-controls'),
-        initiallyExpanded: _controlsExpanded,
-        onExpansionChanged: (expanded) => setState(() => _controlsExpanded = expanded),
-        tilePadding: EdgeInsets.zero,
-        childrenPadding: EdgeInsets.zero,
-        title: Text(
-          'Configuration',
-          style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
-        ),
-        subtitle: Text(
-          'Collapsed by default. Tap to edit sources, proxy, filter, sort, and layout.',
-          style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-        ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              SegmentedButton<_LayoutMode>(
-                segments: const [
-                  ButtonSegment(value: _LayoutMode.grid, label: Text('Grid'), icon: Icon(Icons.grid_view_rounded)),
-                  ButtonSegment(value: _LayoutMode.masonry, label: Text('Masonry'), icon: Icon(Icons.view_week_rounded)),
-                  ButtonSegment(value: _LayoutMode.list, label: Text('List'), icon: Icon(Icons.view_agenda_rounded)),
-                ],
-                selected: {_layoutMode},
-                onSelectionChanged: (value) => setState(() => _layoutMode = value.first),
-              ),
-              SegmentedButton<_DensityMode>(
-                segments: const [
-                  ButtonSegment(value: _DensityMode.compact, label: Text('5 Columns')),
-                  ButtonSegment(value: _DensityMode.comfy, label: Text('3 Columns')),
-                  ButtonSegment(value: _DensityMode.spacious, label: Text('1 Column')),
-                ],
-                selected: {_densityMode},
-                onSelectionChanged: (value) => setState(() => _densityMode = value.first),
-              ),
-              DropdownButton<_SortMode>(
-                value: _sortMode,
-                items: const [
-                  DropdownMenuItem(value: _SortMode.updated, child: Text('Sort: Updated')),
-                  DropdownMenuItem(value: _SortMode.stars, child: Text('Sort: Stars')),
-                  DropdownMenuItem(value: _SortMode.name, child: Text('Sort: Name')),
-                ],
-                onChanged: (value) {
-                  if (value == null) return;
-                  setState(() => _sortMode = value);
-                },
-              ),
-              SizedBox(
-                width: 220,
-                child: TextField(
-                  controller: _searchController,
-                  onChanged: (_) => setState(() {}),
-                  decoration: const InputDecoration(
-                    labelText: 'Filter',
-                    hintText: 'Search repo name / description',
-                    border: OutlineInputBorder(),
-                    isDense: true,
-                  ),
-                ),
-              ),
-              FilledButton.icon(
-                onPressed: _loading ? null : _refresh,
-                icon: _loading
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.refresh_rounded),
-                label: Text(_loading ? 'Loading...' : 'Refresh'),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          _buildSourceTable(theme),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Switch(
-                value: _useProxy,
-                onChanged: (value) => setState(() => _useProxy = value),
-              ),
-              const SizedBox(width: 6),
-              const Text('Use proxy'),
-              const SizedBox(width: 12),
-              Expanded(
-                child: TextField(
-                  controller: _proxyController,
-                  enabled: _useProxy,
-                  decoration: const InputDecoration(
-                    labelText: 'Proxy URL',
-                    hintText: 'http://127.0.0.1:7890',
-                    border: OutlineInputBorder(),
-                    isDense: true,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          if (_logs.isNotEmpty) ...[
-            const SizedBox(height: 10),
-            ExpansionTile(
-              tilePadding: EdgeInsets.zero,
-              childrenPadding: const EdgeInsets.only(bottom: 8),
-              title: const Text('Fetch Trace'),
-              subtitle: Text(
-                _logs.last,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              children: [
-                for (final line in _logs)
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: Padding(
-                      padding: const EdgeInsets.only(bottom: 4),
-                      child: SelectableText(
-                        line,
-                        style: theme.textTheme.bodySmall,
-                      ),
+          InkWell(
+            borderRadius: BorderRadius.circular(14),
+            onTap: () => setState(() => _controlsExpanded = !_controlsExpanded),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Configuration',
+                          style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          _controlsExpanded
+                              ? 'Tap to collapse sources, proxy, filter, sort, and layout.'
+                              : 'Collapsed by default. Tap to edit sources, proxy, filter, sort, and layout.',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
+                  Icon(
+                    _controlsExpanded
+                        ? Icons.expand_less_rounded
+                        : Icons.expand_more_rounded,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (_controlsExpanded) ...[
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                SegmentedButton<_LayoutMode>(
+                  segments: const [
+                    ButtonSegment(value: _LayoutMode.grid, label: Text('Grid'), icon: Icon(Icons.grid_view_rounded)),
+                    ButtonSegment(value: _LayoutMode.masonry, label: Text('Masonry'), icon: Icon(Icons.view_week_rounded)),
+                    ButtonSegment(value: _LayoutMode.list, label: Text('List'), icon: Icon(Icons.view_agenda_rounded)),
+                  ],
+                  selected: {_layoutMode},
+                  onSelectionChanged: (value) => setState(() => _layoutMode = value.first),
+                ),
+                SegmentedButton<_DensityMode>(
+                  segments: const [
+                    ButtonSegment(value: _DensityMode.compact, label: Text('5 Columns')),
+                    ButtonSegment(value: _DensityMode.comfy, label: Text('3 Columns')),
+                    ButtonSegment(value: _DensityMode.spacious, label: Text('1 Column')),
+                  ],
+                  selected: {_densityMode},
+                  onSelectionChanged: (value) => setState(() => _densityMode = value.first),
+                ),
+                DropdownButton<_SortMode>(
+                  value: _sortMode,
+                  items: const [
+                    DropdownMenuItem(value: _SortMode.updated, child: Text('Sort: Updated')),
+                    DropdownMenuItem(value: _SortMode.stars, child: Text('Sort: Stars')),
+                    DropdownMenuItem(value: _SortMode.name, child: Text('Sort: Name')),
+                  ],
+                  onChanged: (value) {
+                    if (value == null) return;
+                    setState(() => _sortMode = value);
+                  },
+                ),
+                SizedBox(
+                  width: 220,
+                  child: TextField(
+                    controller: _searchController,
+                    onChanged: (_) => setState(() {}),
+                    decoration: const InputDecoration(
+                      labelText: 'Filter',
+                      hintText: 'Search repo name / description',
+                      border: OutlineInputBorder(),
+                      isDense: true,
+                    ),
+                  ),
+                ),
+                FilledButton.icon(
+                  onPressed: _loading ? null : _refresh,
+                  icon: _loading
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.refresh_rounded),
+                  label: Text(_loading ? 'Loading...' : 'Refresh'),
+                ),
               ],
             ),
+            const SizedBox(height: 12),
+            _buildSourceTable(theme),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Switch(
+                  value: _useProxy,
+                  onChanged: (value) => setState(() => _useProxy = value),
+                ),
+                const SizedBox(width: 6),
+                const Text('Use proxy'),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: TextField(
+                    controller: _proxyController,
+                    enabled: _useProxy,
+                    decoration: const InputDecoration(
+                      labelText: 'Proxy URL',
+                      hintText: 'http://127.0.0.1:7890',
+                      border: OutlineInputBorder(),
+                      isDense: true,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            if (_logs.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  border: Border.all(color: theme.colorScheme.outlineVariant),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Fetch Trace',
+                      style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 8),
+                    for (final line in _logs)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: SelectableText(
+                          line,
+                          style: theme.textTheme.bodySmall,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
           ],
         ],
       ),

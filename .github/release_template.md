@@ -1,6 +1,6 @@
 <div align=center>
 
-[![Downloads](https://img.shields.io/github/downloads/__REPO__/__VERSION__/total?style=flat-square&logo=github)](https://github.com/__REPO__/releases/tag/__VERSION__)
+[![Downloads](https://img.shields.io/github/downloads/__REPO__/v__VERSION__/total?style=flat-square&logo=github)](https://github.com/__REPO__/releases/tag/v__VERSION__)
 
 </div>
 
@@ -17,5 +17,9 @@
 > `none yet` means this platform is not included in the current GitHub Actions build matrix yet.
 
 ### 📥 Quick Install
+
+__BUILD_INFO__
+
+### Commit Log
 
 __COMMIT_LOG__

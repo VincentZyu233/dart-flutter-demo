@@ -38,7 +38,7 @@ class FlutterShowcaseApp extends StatelessWidget {
       valueListenable: themeNotifier,
       builder: (context, themeMode, child) {
         return MaterialApp(
-          title: 'Flutter Showcase',
+          title: 'Dart + Flutter Demo',
           debugShowCheckedModeBanner: false,
           themeMode: themeMode,
           theme: ThemeData(
@@ -206,7 +206,7 @@ class _HomeShellState extends State<HomeShell> {
     if (!context.mounted) return;
     showAboutDialog(
       context: context,
-      applicationName: 'Flutter Showcase',
+      applicationName: 'Dart + Flutter Demo',
       applicationVersion: '${info.version}+${info.buildNumber}',
       applicationIcon: const Icon(Icons.flutter_dash, size: 48),
       children: [
