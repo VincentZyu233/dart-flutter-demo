@@ -371,7 +371,13 @@ $disk = Get-CimInstance Win32_LogicalDisk -Filter "DeviceID='C:'"
 $ip = Get-NetIPAddress -AddressFamily IPv4 -PrefixOrigin Dhcp,Manual |
   Where-Object {
     $_.IPAddress -notlike '127.*' -and
-    $_.IPAddress -notlike '169.254.*'
+    $_.IPAddress -notlike '169.254.*' -and
+    $_.InterfaceAlias -notmatch 'Radmin|VPN|VMware|vEthernet|Hyper-V|WSL|Virtual|Todesk|Parsec|GameViewer'
+  } |
+  Sort-Object {
+    if ($_.AddressState -eq 'Preferred') { 0 } else { 1 }
+  }, {
+    if ($_.PrefixOrigin -eq 'Dhcp') { 0 } else { 1 }
   } |
   Select-Object -First 1
 Write-Output "UPTIME|$($os.LastBootUpTime)"
@@ -615,13 +621,6 @@ Write-Output "NET|$($ip.IPAddress)"
       var score = 1000;
       if (adapter.hasDefaultGateway) score -= 200;
       if (!_looksVirtualOrVpn(adapter.name)) score -= 120;
-      if (ip.startsWith('192.168.')) {
-        score -= 80;
-      } else if (ip.startsWith('10.')) {
-        score -= 60;
-      } else if (_isPrivate172(ip)) {
-        score -= 40;
-      }
       if (adapter.name.toLowerCase().contains('ethernet')) {
         score -= 20;
       }

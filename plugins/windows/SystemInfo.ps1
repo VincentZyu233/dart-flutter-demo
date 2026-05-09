@@ -15,11 +15,6 @@ $preferred = Get-NetIPConfiguration | Where-Object {
   $_.InterfaceAlias -notmatch 'Radmin|VPN|VMware|vEthernet|Hyper-V|WSL|Virtual|Todesk|Parsec|GameViewer'
 } | Sort-Object {
   if ($_.IPv4DefaultGateway) { 0 } else { 1 }
-}, {
-  if ($_.IPv4Address.IPAddress -like '192.168.*') { 0 }
-  elseif ($_.IPv4Address.IPAddress -like '10.*') { 1 }
-  elseif ($_.IPv4Address.IPAddress -match '^172\.(1[6-9]|2[0-9]|3[0-1])\.') { 2 }
-  else { 3 }
 } | Select-Object -First 1
 
 if (-not $preferred) {

@@ -447,7 +447,6 @@ class _InfoRow extends StatelessWidget {
                         height: 1.4,
                       ),
                     ),
-                  ),
             ),
           ],
         ),
