@@ -11,13 +11,21 @@ class Page1DialogLab extends StatelessWidget {
         children: [
           FilledButton.icon(
             onPressed: () => _showModernDialog(context),
-            icon: const Icon(Icons.auto_awesome),
+            style: FilledButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 16),
+              textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            ),
+            icon: const Icon(Icons.auto_awesome, size: 22),
             label: const Text('Open Modern Dialog'),
           ),
           const SizedBox(height: 16),
           OutlinedButton.icon(
             onPressed: () => _showWin32Dialog(context),
-            icon: const Icon(Icons.desktop_windows),
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 16),
+              textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            ),
+            icon: const Icon(Icons.desktop_windows, size: 22),
             label: const Text('Open Classic Dialog'),
           ),
         ],
@@ -410,8 +418,8 @@ class _Win32DialogState extends State<_Win32Dialog> {
     return Builder(
       builder: (context) {
         return SizedBox(
-          width: 80,
-          height: 28,
+          width: 96,
+          height: 34,
           child: ElevatedButton(
             onPressed: () {
               Navigator.of(context).pop();
@@ -429,7 +437,7 @@ class _Win32DialogState extends State<_Win32Dialog> {
             ),
             child: Text(
               text,
-              style: const TextStyle(fontSize: 12),
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
             ),
           ),
         );

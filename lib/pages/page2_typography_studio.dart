@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -103,6 +104,37 @@ class _Page2TypographyStudioState extends State<Page2TypographyStudio> {
       if (!mounted) return;
       setState(() {
         _loadingLocalFont = false;
+      });
+    }
+  }
+
+  Future<void> _pickLocalFontPath() async {
+    const typeGroup = XTypeGroup(
+      label: 'font',
+      extensions: <String>['ttf', 'otf'],
+      uniformTypeIdentifiers: <String>[
+        'public.truetype-font',
+        'public.opentype-font',
+      ],
+      mimeTypes: <String>[
+        'font/ttf',
+        'font/otf',
+        'application/x-font-ttf',
+        'application/x-font-otf',
+      ],
+    );
+
+    try {
+      final file = await openFile(acceptedTypeGroups: <XTypeGroup>[typeGroup]);
+      if (file == null || !mounted) return;
+      setState(() {
+        _fontPathController.text = file.path;
+        _localFontStatus = 'Selected: ${file.name}';
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _localFontStatus = 'File picker failed: $e';
       });
     }
   }
@@ -233,10 +265,30 @@ class _Page2TypographyStudioState extends State<Page2TypographyStudio> {
             const SizedBox(height: 8),
             TextField(
               controller: _fontPathController,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Local font path',
-                hintText: r'D:\fonts\YourFont.ttf',
-                border: OutlineInputBorder(),
+                hintText: '/path/to/local/font.ttf',
+                border: const OutlineInputBorder(),
+                suffixIcon: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      tooltip: 'Clear path',
+                      onPressed: () {
+                        _fontPathController.clear();
+                        setState(() {
+                          _localFontStatus = 'Path cleared.';
+                        });
+                      },
+                      icon: const Icon(Icons.close_rounded),
+                    ),
+                    IconButton(
+                      tooltip: 'Browse font file',
+                      onPressed: _pickLocalFontPath,
+                      icon: const Icon(Icons.folder_open_rounded),
+                    ),
+                  ],
+                ),
               ),
             ),
             const SizedBox(height: 8),
