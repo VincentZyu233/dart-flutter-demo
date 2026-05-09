@@ -1,4 +1,4 @@
-![flutter-showcase](https://socialify.git.ci/user/flutter-showcase/image?description=1&font=Raleway&forks=1&issues=1&language=1&logo=https%3A%2F%2Ficon.icepanel.io%2FTechnology%2Fsvg%2FGitHub-Actions.svg&name=1&owner=1&pattern=Circuit+Board&pulls=1&stargazers=1&theme=Light)
+![dart-flutter-demo-showcase](https://socialify.git.ci/user/dart-flutter-demo-showcase/image?description=1&font=Raleway&forks=1&issues=1&language=1&logo=https%3A%2F%2Ficon.icepanel.io%2FTechnology%2Fsvg%2FGitHub-Actions.svg&name=1&owner=1&pattern=Circuit+Board&pulls=1&stargazers=1&theme=Light)
 
 [English](./build.md) | [中文](./build.zh-cn.md)
 
@@ -58,9 +58,9 @@ Build artifacts for all three platforms simultaneously using matrix strategy.
 
 | Platform | Runner | Build Command | Artifact |
 |----------|--------|---------------|----------|
-| Windows x64 | `windows-latest` | `flutter build windows --release` | `flutter-showcase-windows-x64-v<version>.zip` |
-| Linux x64 | `ubuntu-latest` | `flutter build linux --release` | `flutter-showcase-linux-x64-v<version>.tar.gz` |
-| Android | `ubuntu-latest` | `flutter build apk --release` | `flutter-showcase-android-v<version>.apk` |
+| Windows x64 | `windows-latest` | `flutter build windows --release` | `dart-flutter-demo-showcase-windows-x64-v<version>.zip` |
+| Linux x64 | `ubuntu-latest` | `flutter build linux --release` | `dart-flutter-demo-showcase-linux-x64-v<version>.tar.gz` |
+| Android | `ubuntu-latest` | `flutter build apk --release` | `dart-flutter-demo-showcase-android-v<version>.apk` |
 
 **Execution Steps:**
 1. Checkout code
@@ -85,8 +85,8 @@ Example: v0.0.1-alpha.1
 
 **Artifact Filename Format:**
 ```
-flutter-showcase-<platform>-v<pubspec-version>.<extension>
-Example: flutter-showcase-windows-x64-v0.0.1-alpha.1.zip
+dart-flutter-demo-showcase-<platform>-v<pubspec-version>.<extension>
+Example: dart-flutter-demo-showcase-windows-x64-v0.0.1-alpha.1.zip
 ```
 
 ### Stage 3: Publish Release
@@ -107,9 +107,9 @@ Create a GitHub Release and upload all build artifacts.
 
 | File | Description |
 |------|-------------|
-| `flutter-showcase-windows-x64-v<version>.zip` | Windows executable archive |
-| `flutter-showcase-linux-x64-v<version>.tar.gz` | Linux executable archive |
-| `flutter-showcase-android-v<version>.apk` | Android APK package |
+| `dart-flutter-demo-showcase-windows-x64-v<version>.zip` | Windows executable archive |
+| `dart-flutter-demo-showcase-linux-x64-v<version>.tar.gz` | Linux executable archive |
+| `dart-flutter-demo-showcase-android-v<version>.apk` | Android APK package |
 
 ## Permissions
 

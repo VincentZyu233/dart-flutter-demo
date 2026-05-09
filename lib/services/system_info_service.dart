@@ -122,17 +122,83 @@ class _WindowsSystemInfo implements SystemInfoService {
   }
 
   static Map<String, String> _getInfoFallback() {
-    return <String, String>{
-      'OS': Platform.operatingSystemVersion,
-      'Host': Platform.localHostname,
-      'Kernel': 'Windows ${Platform.operatingSystemVersion}',
-      'Uptime': 'unknown',
-      'CPU': '${Platform.numberOfProcessors} cores',
-      'Memory': 'unknown',
-      'Disk (C:\\)': 'unknown',
-      'Local IP': 'unknown',
-      'Locale': _normalizeWindowsLocale(Platform.localeName),
-    };
+    final result = <String, String>{};
+    result['OS'] = Platform.operatingSystemVersion;
+    result['Host'] = Platform.localHostname;
+    result['Kernel'] = 'Windows ${Platform.operatingSystemVersion}';
+
+    // Prefer the standalone .ps1 file (maintained at plugins/windows/SystemInfo.ps1).
+    // Falls back to inline script if the file is not found (e.g. production build).
+    List<String>? psOutput;
+    try {
+      final ps1 = File(r'plugins\windows\SystemInfo.ps1');
+      if (ps1.existsSync()) {
+        psOutput = Process.runSync(
+          'powershell', ['-NoProfile', '-File', ps1.absolute.path],
+          runInShell: true,
+        ).stdout.toString().split('\n');
+      }
+    } catch (_) {}
+
+    psOutput ??= _runInlinePowerShell();
+
+    for (final line in psOutput!) {
+      final l = line.trim();
+      if (l.startsWith('UPTIME|')) {
+        final raw = l.substring(7);
+        final dt = DateTime.tryParse(raw);
+        if (dt != null) {
+          result['Uptime'] = _formatDuration(DateTime.now().toUtc().difference(dt));
+        } else {
+          result['Uptime'] = raw;
+        }
+      } else if (l.startsWith('CPU|')) {
+        result['CPU'] = l.substring(4).trim();
+      } else if (l.startsWith('MEM|')) {
+        result['Memory'] = l.substring(4).trim();
+      } else if (l.startsWith('DISK|')) {
+        result['Disk (C:\\)'] = l.substring(5).trim();
+      } else if (l.startsWith('NET|')) {
+        result['Local IP'] = l.substring(4).trim();
+      }
+    }
+
+    result.putIfAbsent('Uptime', () => 'unknown');
+    result.putIfAbsent('CPU', () => '${Platform.numberOfProcessors} cores');
+    result.putIfAbsent('Memory', () => 'unknown');
+    result.putIfAbsent('Disk (C:\\)', () => 'unknown');
+    result.putIfAbsent('Local IP', () => 'unknown');
+    result['Locale'] = _normalizeWindowsLocale(Platform.localeName);
+    return result;
+  }
+
+  static List<String> _runInlinePowerShell() {
+    final script = [
+      '-NoProfile', '-Command',
+      r'''
+$os = Get-CimInstance Win32_OperatingSystem
+$cs = Get-CimInstance Win32_ComputerSystem
+$cpu = Get-CimInstance Win32_Processor | Select-Object -First 1
+$disk = Get-CimInstance Win32_LogicalDisk -Filter "DeviceID='C:'"
+$net = Get-NetAdapter | Where-Object Status -eq 'Up' | Select-Object -First 1
+Write-Output "UPTIME|$($os.LastBootUpTime)"
+Write-Output "CPU|$($cpu.Name) ($($cpu.NumberOfLogicalProcessors) cores)"
+Write-Output "MEM|$([math]::Round($cs.TotalPhysicalMemory/1GB,1)) GiB total"
+Write-Output "DISK|$([math]::Round($disk.Size/1GB,1)) GiB total $([math]::Round(($disk.Size-$disk.FreeSpace)/1GB,1)) GiB used"
+Write-Output "NET|$($net.Name)"
+'''
+    ];
+    return Process.runSync('powershell', script, runInShell: true).stdout.toString().split('\n');
+  }
+
+  static String _formatDuration(Duration d) {
+    final days = d.inDays;
+    final hours = d.inHours % 24;
+    final mins = d.inMinutes % 60;
+    final buf = StringBuffer();
+    if (days > 0) buf.write('$days days, ');
+    buf.write('$hours hours, $mins mins');
+    return buf.toString();
   }
   static String _normalizeWindowsLocale(String? locale) {
     final trimmed = locale?.trim() ?? '';

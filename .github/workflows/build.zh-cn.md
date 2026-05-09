@@ -1,4 +1,4 @@
-![flutter-showcase](https://socialify.git.ci/user/flutter-showcase/image?description=1&font=Raleway&forks=1&issues=1&language=1&logo=https%3A%2F%2Ficon.icepanel.io%2FTechnology%2Fsvg%2FGitHub-Actions.svg&name=1&owner=1&pattern=Circuit+Board&pulls=1&stargazers=1&theme=Light)
+![dart-flutter-demo-showcase](https://socialify.git.ci/user/dart-flutter-demo-showcase/image?description=1&font=Raleway&forks=1&issues=1&language=1&logo=https%3A%2F%2Ficon.icepanel.io%2FTechnology%2Fsvg%2FGitHub-Actions.svg&name=1&owner=1&pattern=Circuit+Board&pulls=1&stargazers=1&theme=Light)
 
 [English](./build.md) | [中文](./build.zh-cn.md)
 
@@ -58,9 +58,9 @@ git commit -m "fix typo"
 
 | 平台 | Runner | 构建命令 | 产物 |
 |------|--------|----------|------|
-| Windows x64 | `windows-latest` | `flutter build windows --release` | `flutter-showcase-windows-x64-v<version>.zip` |
-| Linux x64 | `ubuntu-latest` | `flutter build linux --release` | `flutter-showcase-linux-x64-v<version>.tar.gz` |
-| Android | `ubuntu-latest` | `flutter build apk --release` | `flutter-showcase-android-v<version>.apk` |
+| Windows x64 | `windows-latest` | `flutter build windows --release` | `dart-flutter-demo-showcase-windows-x64-v<version>.zip` |
+| Linux x64 | `ubuntu-latest` | `flutter build linux --release` | `dart-flutter-demo-showcase-linux-x64-v<version>.tar.gz` |
+| Android | `ubuntu-latest` | `flutter build apk --release` | `dart-flutter-demo-showcase-android-v<version>.apk` |
 
 **执行步骤：**
 1. 检出代码
@@ -85,8 +85,8 @@ v<pubspec版本号>
 
 **产物文件名格式：**
 ```
-flutter-showcase-<平台>-v<pubspec版本号>.<扩展名>
-示例：flutter-showcase-windows-x64-v0.0.1-alpha.1.zip
+dart-flutter-demo-showcase-<平台>-v<pubspec版本号>.<扩展名>
+示例：dart-flutter-demo-showcase-windows-x64-v0.0.1-alpha.1.zip
 ```
 
 ### 阶段三：发布 Release
@@ -107,9 +107,9 @@ flutter-showcase-<平台>-v<pubspec版本号>.<扩展名>
 
 | 文件 | 说明 |
 |------|------|
-| `flutter-showcase-windows-x64-v<version>.zip` | Windows 可执行文件压缩包 |
-| `flutter-showcase-linux-x64-v<version>.tar.gz` | Linux 可执行文件压缩包 |
-| `flutter-showcase-android-v<version>.apk` | Android 安装包 |
+| `dart-flutter-demo-showcase-windows-x64-v<version>.zip` | Windows 可执行文件压缩包 |
+| `dart-flutter-demo-showcase-linux-x64-v<version>.tar.gz` | Linux 可执行文件压缩包 |
+| `dart-flutter-demo-showcase-android-v<version>.apk` | Android 安装包 |
 
 ## 权限
 

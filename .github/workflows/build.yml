@@ -58,19 +58,19 @@ jobs:
         include:
           - platform: windows
             os: windows-latest
-            artifact_name: flutter-showcase-windows-x64
+            artifact_name: dart-flutter-demo-showcase-windows-x64
             artifact_path: build/windows/x64/runner/Release/
           - platform: linux
             os: ubuntu-latest
-            artifact_name: flutter-showcase-linux-x64
+            artifact_name: dart-flutter-demo-showcase-linux-x64
             artifact_path: build/linux/x64/release/bundle/
           - platform: android
             os: ubuntu-latest
-            artifact_name: flutter-showcase-android
+            artifact_name: dart-flutter-demo-showcase-android
             artifact_path: build/app/outputs/flutter-apk/
           - platform: ios
             os: macos-latest
-            artifact_name: flutter-showcase-ios
+            artifact_name: dart-flutter-demo-showcase-ios
             artifact_path: build/ios/ipa/
     steps:
       - name: Checkout code
@@ -216,7 +216,7 @@ jobs:
           cd build/ios/iphoneos
           mkdir Payload
           cp -r Runner.app Payload/
-          zip -r ../ipa/flutter-showcase-ios.ipa Payload
+          zip -r ../ipa/dart-flutter-demo-showcase-ios.ipa Payload
           cd ../..
 
       - name: Upload Windows artifact
@@ -248,7 +248,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact_name }}
-          path: build/ios/ipa/flutter-showcase-ios.ipa
+          path: build/ios/ipa/dart-flutter-demo-showcase-ios.ipa
           retention-days: 7
 
   # Stage 3: Package & publish release
@@ -269,22 +269,22 @@ jobs:
           VERSION="${{ needs.check-commit.outputs.version }}"
 
           # Windows: zip the directory
-          cd artifacts/flutter-showcase-windows-x64
-          zip -r "../flutter-showcase-windows-x64-v${VERSION}.zip" .
+          cd artifacts/dart-flutter-demo-showcase-windows-x64
+          zip -r "../dart-flutter-demo-showcase-windows-x64-v${VERSION}.zip" .
           cd ../..
 
           # Linux: tar.gz the directory
-          cd artifacts/flutter-showcase-linux-x64
-          tar -czf "../flutter-showcase-linux-x64-v${VERSION}.tar.gz" .
+          cd artifacts/dart-flutter-demo-showcase-linux-x64
+          tar -czf "../dart-flutter-demo-showcase-linux-x64-v${VERSION}.tar.gz" .
           cd ../..
 
           # Android: rename the APK
-          cp artifacts/flutter-showcase-android/app-release.apk \
-             "artifacts/flutter-showcase-android-v${VERSION}.apk"
+          cp artifacts/dart-flutter-demo-showcase-android/app-release.apk \
+             "artifacts/dart-flutter-demo-showcase-android-v${VERSION}.apk"
 
           # iOS: rename the IPA
-          cp artifacts/flutter-showcase-ios/flutter-showcase-ios.ipa \
-             "artifacts/flutter-showcase-ios-v${VERSION}.ipa"
+          cp artifacts/dart-flutter-demo-showcase-ios/dart-flutter-demo-showcase-ios.ipa \
+             "artifacts/dart-flutter-demo-showcase-ios-v${VERSION}.ipa"
 
           echo "📦 Packaged artifacts:"
           find artifacts/ -maxdepth 1 -type f
@@ -303,19 +303,19 @@ jobs:
 
             | Platform | File |
             |----------|------|
-            | Windows x64 | `flutter-showcase-windows-x64-v${{ needs.check-commit.outputs.version }}.zip` |
-            | Linux x64 | `flutter-showcase-linux-x64-v${{ needs.check-commit.outputs.version }}.tar.gz` |
-            | Android APK | `flutter-showcase-android-v${{ needs.check-commit.outputs.version }}.apk` |
-            | iOS IPA | `flutter-showcase-ios-v${{ needs.check-commit.outputs.version }}.ipa` |
+            | Windows x64 | `dart-flutter-demo-showcase-windows-x64-v${{ needs.check-commit.outputs.version }}.zip` |
+            | Linux x64 | `dart-flutter-demo-showcase-linux-x64-v${{ needs.check-commit.outputs.version }}.tar.gz` |
+            | Android APK | `dart-flutter-demo-showcase-android-v${{ needs.check-commit.outputs.version }}.apk` |
+            | iOS IPA | `dart-flutter-demo-showcase-ios-v${{ needs.check-commit.outputs.version }}.ipa` |
 
             ### Build Info
             - Triggered by: `${{ github.event.head_commit.message }}`
             - Commit: `${{ github.sha }}`
           files: |
-            artifacts/flutter-showcase-windows-x64-v*.zip
-            artifacts/flutter-showcase-linux-x64-v*.tar.gz
-            artifacts/flutter-showcase-android-v*.apk
-            artifacts/flutter-showcase-ios-v*.ipa
+            artifacts/dart-flutter-demo-showcase-windows-x64-v*.zip
+            artifacts/dart-flutter-demo-showcase-linux-x64-v*.tar.gz
+            artifacts/dart-flutter-demo-showcase-android-v*.apk
+            artifacts/dart-flutter-demo-showcase-ios-v*.ipa
           draft: false
           prerelease: false
         env:
