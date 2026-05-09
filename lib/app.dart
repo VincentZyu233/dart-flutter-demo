@@ -156,6 +156,15 @@ class _HomeShellState extends State<HomeShell> {
                     _showAboutDialog(context);
                   },
                 ),
+                ListTile(
+                  leading: const Icon(Icons.menu_book_outlined),
+                  title: const Text('Guide'),
+                  subtitle: const Text('What the 5 pages do'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _showGuideDialog(context);
+                  },
+                ),
               ],
             ),
           ),
@@ -225,6 +234,118 @@ class _HomeShellState extends State<HomeShell> {
           ),
         ),
       ],
+    );
+  }
+
+  Future<void> _showGuideDialog(BuildContext context) async {
+    const repoUrl = 'https://github.com/VincentZyu233/dart-flutter-demo';
+    await showDialog<void>(
+      context: context,
+      builder: (context) {
+        final theme = Theme.of(context);
+        return AlertDialog(
+          title: const Text('Page Guide'),
+          content: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildGuideEntry(
+                  dialogContext: context,
+                  index: 0,
+                  title: '0. System Info',
+                  description: 'Native and fallback system information with debug trace and export tools.',
+                ),
+                const SizedBox(height: 8),
+                _buildGuideEntry(
+                  dialogContext: context,
+                  index: 1,
+                  title: '1. Dialog Lab',
+                  description: 'Modern Flutter dialog and classic Win32-style dialog comparison.',
+                ),
+                const SizedBox(height: 8),
+                _buildGuideEntry(
+                  dialogContext: context,
+                  index: 2,
+                  title: '2. Typography Studio',
+                  description: 'Font, spacing, color, local font file, and live text preview testing.',
+                ),
+                const SizedBox(height: 8),
+                _buildGuideEntry(
+                  dialogContext: context,
+                  index: 3,
+                  title: '3. Adaptive Grid',
+                  description: 'GitHub repository fetching, filter/sort, and Grid / Masonry / List layout experiments.',
+                ),
+                const SizedBox(height: 8),
+                _buildGuideEntry(
+                  dialogContext: context,
+                  index: 4,
+                  title: '4. Controls & Feedback',
+                  description: 'Switches, radios, checkboxes, progress, snack bars, and bottom sheets.',
+                ),
+                const SizedBox(height: 12),
+                const Text('Want more detailed notes? See the README here:'),
+                const SizedBox(height: 6),
+                InkWell(
+                  onTap: () => launchUrl(Uri.parse(repoUrl)),
+                  child: Text(
+                    repoUrl,
+                    style: TextStyle(
+                      color: theme.colorScheme.primary,
+                      decoration: TextDecoration.underline,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Close'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildGuideEntry({
+    required BuildContext dialogContext,
+    required int index,
+    required String title,
+    required String description,
+  }) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(10),
+      onTap: () {
+        Navigator.pop(dialogContext);
+        setState(() => _currentIndex = index);
+      },
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Padding(
+              padding: EdgeInsets.only(top: 2),
+              child: Icon(Icons.arrow_right_rounded),
+            ),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 2),
+                  Text(description),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

@@ -1,28 +1,33 @@
 # dart_flutter_demo
 
-A cross-platform Flutter UI showcase PoC (Proof of Concept) app for Android, Windows, and Linux.
+A cross-platform Flutter UI showcase PoC (Proof of Concept) app for Android, Windows, Linux, macOS, and iOS CI packaging.
 
 ## Pages
 
 ### 0. System Info
 
-Displays system information through native C++ (Windows) and Kotlin (Android) integration, plus dart:io on Linux. Shows OS, hostname, kernel, uptime, CPU, memory, disk, and local IP. Includes a built-in debug trace panel for inspecting collection logs and exportable diagnostics.
+Displays system information through native C++ (Windows), Kotlin (Android), Swift (iOS), and dart:io fallbacks. Shows OS, hostname, kernel, uptime, CPU, memory, disk, and local IP. Includes built-in debug trace viewing plus copy/export actions for diagnostics.
+Source: [lib/pages/page0_system_info.dart](https://github.com/VincentZyu233/dart-flutter-demo/blob/main/lib/pages/page0_system_info.dart)
 
 ### 1. Dialog Lab
 
-A pixel-accurate recreation of a classic Win32 dialog. Uses retro borders, inset input styling, and period-appropriate color treatment to demonstrate that Flutter can reproduce non-native UI conventions without depending on system widgets.
+A compact dialog lab with both a modern Flutter dialog and a classic Win32-style dialog recreation. Uses retro borders, inset input styling, and larger action buttons to demonstrate that Flutter can reproduce very different interaction and visual languages in one app.
+Source: [lib/pages/page1_dialog_lab.dart](https://github.com/VincentZyu233/dart-flutter-demo/blob/main/lib/pages/page1_dialog_lab.dart)
 
 ### 2. Typography Studio
 
-An interactive text playground. Adjust font size, letter spacing, and line height with live controls. Switch between the system font and a custom serif font from Google Fonts. Useful for checking text rendering, spacing, and visual rhythm.
+An interactive text playground. Adjust font size, letter spacing, and line height with live controls. Switch between the system font, Google Fonts, and a one-shot local font file. Includes live preview text editing, dark/light auto text color switching, preset swatches, and a custom color picker with RGB and HEX readout.
+Source: [lib/pages/page2_typography_studio.dart](https://github.com/VincentZyu233/dart-flutter-demo/blob/main/lib/pages/page2_typography_studio.dart)
 
 ### 3. Adaptive Grid
 
-A responsive card grid driven by `LayoutBuilder`. Automatically switches between 1, 2, or 3 columns based on available width. Useful for validating resize behavior on desktop and layout adaptation across device sizes.
+A responsive GitHub repository browser driven by LayoutBuilder. Fetches repositories from configurable personal or organization repository pages, supports proxy configuration, filter and sort controls, collapsible configuration UI, layout switching between Grid / Masonry / List, and adjustable target columns from 5 to 1.
+Source: [lib/pages/page3_adaptive_grid.dart](https://github.com/VincentZyu233/dart-flutter-demo/blob/main/lib/pages/page3_adaptive_grid.dart)
 
 ### 4. Controls & Feedback
 
 A compact lab for interactive controls and user feedback. Includes radios, checkboxes, switches, progress indicators, snack bars, and bottom sheets. Useful for checking state transitions, motion, and component responsiveness.
+Source: [lib/pages/page4_controls_feedback.dart](https://github.com/VincentZyu233/dart-flutter-demo/blob/main/lib/pages/page4_controls_feedback.dart)
 
 ## Build & Run
 
@@ -48,4 +53,5 @@ GitHub Actions handles automated builds and packaging. Push a commit containing 
 - Flutter (stable channel)
 - Material 3 design system
 - Google Fonts plugin
+- file_selector + flutter_colorpicker plugins
 - State management: setState (kept intentionally simple for a PoC)

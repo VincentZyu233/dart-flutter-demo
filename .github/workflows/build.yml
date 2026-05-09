@@ -429,7 +429,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ needs.check-commit.outputs.version }}
-          name: Dart + Flutter Demo v${{ needs.check-commit.outputs.version }}
+          name: dart-flutter-demo (proof of concept) v${{ needs.check-commit.outputs.version }}
           body_path: release_body.md
           files: |
             artifacts/dart-flutter-demo-showcase-windows-x64-v*.zip

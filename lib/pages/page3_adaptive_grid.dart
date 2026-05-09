@@ -7,7 +7,7 @@ import '../services/github_repository_service.dart';
 import '../widgets/animated_page.dart';
 
 enum _LayoutMode { grid, masonry, list }
-enum _DensityMode { compact, comfy, spacious }
+enum _DensityMode { five, four, three, two, one }
 enum _SortMode { updated, stars, name }
 
 class Page3AdaptiveGrid extends StatefulWidget {
@@ -29,7 +29,7 @@ class _Page3AdaptiveGridState extends State<Page3AdaptiveGrid> {
   final List<TextEditingController> _sourceControllers = [];
 
   _LayoutMode _layoutMode = _LayoutMode.grid;
-  _DensityMode _densityMode = _DensityMode.comfy;
+  _DensityMode _densityMode = _DensityMode.three;
   _SortMode _sortMode = _SortMode.updated;
   bool _useProxy = false;
   bool _controlsExpanded = false;
@@ -154,29 +154,32 @@ class _Page3AdaptiveGridState extends State<Page3AdaptiveGrid> {
                 : width < 1400
                     ? 4
                     : 5;
-    return switch (_densityMode) {
-      _DensityMode.compact => math.min(base + 1, 5),
-      _DensityMode.comfy => base,
-      _DensityMode.spacious => math.max(1, base - 1),
+    final target = switch (_densityMode) {
+      _DensityMode.five => 5,
+      _DensityMode.four => 4,
+      _DensityMode.three => 3,
+      _DensityMode.two => 2,
+      _DensityMode.one => 1,
     };
+    return math.min(base, target);
   }
 
   double get _gap => switch (_densityMode) {
-        _DensityMode.compact => 10,
-        _DensityMode.comfy => 14,
-        _DensityMode.spacious => 18,
+        _DensityMode.five || _DensityMode.four => 10,
+        _DensityMode.three => 14,
+        _DensityMode.two || _DensityMode.one => 18,
       };
 
   EdgeInsets get _cardPadding => switch (_densityMode) {
-        _DensityMode.compact => const EdgeInsets.all(10),
-        _DensityMode.comfy => const EdgeInsets.all(14),
-        _DensityMode.spacious => const EdgeInsets.all(18),
+        _DensityMode.five || _DensityMode.four => const EdgeInsets.all(10),
+        _DensityMode.three => const EdgeInsets.all(14),
+        _DensityMode.two || _DensityMode.one => const EdgeInsets.all(18),
       };
 
   double get _cardRadius => switch (_densityMode) {
-        _DensityMode.compact => 12,
-        _DensityMode.comfy => 16,
-        _DensityMode.spacious => 20,
+        _DensityMode.five || _DensityMode.four => 12,
+        _DensityMode.three => 16,
+        _DensityMode.two || _DensityMode.one => 20,
       };
 
   @override
@@ -296,13 +299,23 @@ class _Page3AdaptiveGridState extends State<Page3AdaptiveGrid> {
                 ),
                 SegmentedButton<_DensityMode>(
                   segments: const [
-                    ButtonSegment(value: _DensityMode.compact, label: Text('5 Columns')),
-                    ButtonSegment(value: _DensityMode.comfy, label: Text('3 Columns')),
-                    ButtonSegment(value: _DensityMode.spacious, label: Text('1 Column')),
+                    ButtonSegment(value: _DensityMode.five, label: Text('5')),
+                    ButtonSegment(value: _DensityMode.four, label: Text('4')),
+                    ButtonSegment(value: _DensityMode.three, label: Text('3')),
+                    ButtonSegment(value: _DensityMode.two, label: Text('2')),
+                    ButtonSegment(value: _DensityMode.one, label: Text('1')),
                   ],
                   selected: {_densityMode},
                   onSelectionChanged: (value) => setState(() => _densityMode = value.first),
                 ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
                 DropdownButton<_SortMode>(
                   value: _sortMode,
                   items: const [
@@ -490,9 +503,11 @@ class _Page3AdaptiveGridState extends State<Page3AdaptiveGrid> {
           Text('Layout: ${_layoutMode.name}'),
           Text(
             'Density: ${switch (_densityMode) {
-              _DensityMode.compact => '5 columns',
-              _DensityMode.comfy => '3 columns',
-              _DensityMode.spacious => '1 column',
+              _DensityMode.five => 'target 5 columns',
+              _DensityMode.four => 'target 4 columns',
+              _DensityMode.three => 'target 3 columns',
+              _DensityMode.two => 'target 2 columns',
+              _DensityMode.one => 'target 1 column',
             }}',
           ),
           Text('Repos: $count'),
