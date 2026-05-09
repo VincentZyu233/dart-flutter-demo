@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../widgets/animated_page.dart';
@@ -21,7 +22,8 @@ enum _FontMode {
 }
 
 class _Page2TypographyStudioState extends State<Page2TypographyStudio> {
-  static const _sentence = 'The quick brown fox jumps over the lazy dog';
+  static const _defaultSentence =
+      '你好，The quick brown fox jumps over the lazy dog ✨🎨🦊';
   static const _paragraph =
       'Typography is not neutral. Weight, rhythm, spacing, and color all change how the same words feel on screen.';
 
@@ -30,12 +32,15 @@ class _Page2TypographyStudioState extends State<Page2TypographyStudio> {
   double _lineHeight = 1.5;
   Color _textColor = Colors.black87;
   _FontMode _fontMode = _FontMode.systemDefault;
+  Brightness? _lastBrightness;
 
   bool _loadingLocalFont = false;
   String? _localFontFamily;
   String? _localFontStatus;
 
   final TextEditingController _fontPathController = TextEditingController();
+  final TextEditingController _previewTextController =
+      TextEditingController(text: _defaultSentence);
 
   static const _palette = <Color>[
     Colors.white,
@@ -55,10 +60,26 @@ class _Page2TypographyStudioState extends State<Page2TypographyStudio> {
     Color(0xFFF97316),
   ];
 
+  String get _rgbText => 'RGB(${_textColor.red}, ${_textColor.green}, ${_textColor.blue})';
+
+  String get _hexText =>
+      '#${_textColor.value.toRadixString(16).padLeft(8, '0').substring(2).toUpperCase()}';
+
   @override
   void dispose() {
     _fontPathController.dispose();
+    _previewTextController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final brightness = Theme.of(context).brightness;
+    if (_lastBrightness != brightness) {
+      _lastBrightness = brightness;
+      _textColor = brightness == Brightness.dark ? Colors.white : Colors.black87;
+    }
   }
 
   Future<void> _loadLocalFont() async {
@@ -166,6 +187,7 @@ class _Page2TypographyStudioState extends State<Page2TypographyStudio> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final previewText = _previewTextController.text;
 
     return AnimatedPageWrapper(
       child: SingleChildScrollView(
@@ -180,13 +202,13 @@ class _Page2TypographyStudioState extends State<Page2TypographyStudio> {
                 color: theme.colorScheme.surfaceContainerHighest,
                 borderRadius: BorderRadius.circular(16),
               ),
-              child: Center(
-                child: Text(
-                  _sentence,
-                  textAlign: TextAlign.center,
-                  style: _textStyle.copyWith(color: _textColor),
+                child: Center(
+                  child: Text(
+                    previewText,
+                    textAlign: TextAlign.center,
+                    style: _textStyle.copyWith(color: _textColor),
+                  ),
                 ),
-              ),
             ),
             const SizedBox(height: 12),
             Container(
@@ -197,7 +219,7 @@ class _Page2TypographyStudioState extends State<Page2TypographyStudio> {
                 border: Border.all(color: theme.colorScheme.outlineVariant),
               ),
               child: Text(
-                _sentence.toUpperCase(),
+                previewText.toUpperCase(),
                 textAlign: TextAlign.center,
                 style: _textStyle.copyWith(
                   color: _textColor.withValues(alpha: 0.6),
@@ -347,6 +369,72 @@ class _Page2TypographyStudioState extends State<Page2TypographyStudio> {
                   ),
                 );
               }).toList(),
+            ),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: () async {
+                var tempColor = _textColor;
+                final accepted = await showDialog<bool>(
+                  context: context,
+                  builder: (context) {
+                    return AlertDialog(
+                      title: const Text('Pick text color'),
+                      content: SingleChildScrollView(
+                        child: ColorPicker(
+                          pickerColor: tempColor,
+                          onColorChanged: (color) => tempColor = color,
+                          enableAlpha: false,
+                          displayThumbColor: true,
+                          labelTypes: const [],
+                          pickerAreaHeightPercent: 0.75,
+                        ),
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context, false),
+                          child: const Text('Cancel'),
+                        ),
+                        FilledButton(
+                          onPressed: () => Navigator.pop(context, true),
+                          child: const Text('Apply'),
+                        ),
+                      ],
+                    );
+                  },
+                );
+                if (accepted == true && mounted) {
+                  setState(() => _textColor = tempColor);
+                }
+              },
+              icon: const Icon(Icons.color_lens_outlined),
+              label: const Text('Custom Color Picker'),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Current: $_rgbText  $_hexText',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _previewTextController,
+              maxLength: 100,
+              minLines: 1,
+              maxLines: 4,
+              onChanged: (_) => setState(() {}),
+              decoration: const InputDecoration(
+                labelText: 'Preview text',
+                hintText: 'Type any text you want to preview',
+                border: OutlineInputBorder(),
+                alignLabelWithHint: true,
+              ),
+            ),
+            Text(
+              'Live preview, 0-100 characters. Changes here update the typography preview above immediately.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
             ),
           ],
         ),
