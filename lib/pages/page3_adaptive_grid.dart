@@ -560,7 +560,9 @@ class _Page3AdaptiveGridState extends State<Page3AdaptiveGrid> {
         crossAxisCount: columns,
         crossAxisSpacing: _gap,
         mainAxisSpacing: _gap,
-        childAspectRatio: _densityMode == _DensityMode.compact ? 1.15 : 1.0,
+        childAspectRatio: _densityMode == _DensityMode.five || _densityMode == _DensityMode.four
+            ? 1.15
+            : 1.0,
       ),
       itemCount: items.length,
       itemBuilder: (context, index) => _RepositoryCard(
@@ -735,7 +737,9 @@ class _RepositoryCardState extends State<_RepositoryCard> {
                       repo.description?.isNotEmpty == true
                           ? repo.description!
                           : 'No description provided.',
-                      maxLines: widget.density == _DensityMode.compact ? 3 : 4,
+                      maxLines: widget.density == _DensityMode.five || widget.density == _DensityMode.four
+                          ? 3
+                          : 4,
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 10),
@@ -821,11 +825,13 @@ class _RepositoryListTileState extends State<_RepositoryListTile> {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
-            subtitle: Text(
-              repo.description?.isNotEmpty == true ? repo.description! : 'No description provided.',
-              maxLines: widget.density == _DensityMode.compact ? 2 : 3,
-              overflow: TextOverflow.ellipsis,
-            ),
+              subtitle: Text(
+                repo.description?.isNotEmpty == true ? repo.description! : 'No description provided.',
+                maxLines: widget.density == _DensityMode.five || widget.density == _DensityMode.four
+                    ? 2
+                    : 3,
+                overflow: TextOverflow.ellipsis,
+              ),
             trailing: Wrap(
               spacing: 6,
               children: [
