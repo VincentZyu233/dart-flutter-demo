@@ -217,6 +217,31 @@ jobs:
         if: matrix.platform == 'macos'
         run: flutter build macos --release
 
+      - name: Package macOS DMG
+        if: matrix.platform == 'macos'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          APP_NAME="dart_flutter_demo"
+          APP_PATH="build/macos/Build/Products/Release/${APP_NAME}.app"
+          STAGING_DIR="build/macos/dmg-staging"
+          DMG_NAME="dart-flutter-demo-showcase-macos-x64"
+
+          test -d "$APP_PATH"
+
+          rm -rf "$STAGING_DIR"
+          mkdir -p "$STAGING_DIR"
+          cp -R "$APP_PATH" "$STAGING_DIR/"
+          ln -s /Applications "$STAGING_DIR/Applications"
+
+          hdiutil create \
+            -volname "Dart + Flutter Demo" \
+            -srcfolder "$STAGING_DIR" \
+            -ov \
+            -format UDZO \
+            "build/macos/${DMG_NAME}.dmg"
+
       - name: Build (Android APK)
         if: matrix.platform == 'android'
         run: |
@@ -297,7 +322,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact_name }}
-          path: build/macos/Build/Products/Release/
+          path: build/macos/dart-flutter-demo-showcase-macos-x64.dmg
           retention-days: 7
 
       - name: Upload Android artifact
@@ -346,10 +371,9 @@ jobs:
           tar -czf "../dart-flutter-demo-showcase-linux-x64-v${VERSION}.tar.gz" .
           cd ../..
 
-          # macOS: zip the .app bundle
-          cd artifacts/dart-flutter-demo-showcase-macos-x64
-          zip -r "../dart-flutter-demo-showcase-macos-x64-v${VERSION}.zip" .
-          cd ../..
+          # macOS: keep the DMG produced in the build job
+          cp artifacts/dart-flutter-demo-showcase-macos-x64/dart-flutter-demo-showcase-macos-x64.dmg \
+             "artifacts/dart-flutter-demo-showcase-macos-x64-v${VERSION}.dmg"
 
           # Android: rename the APK
           ls -lah artifacts/dart-flutter-demo-showcase-android/
@@ -410,7 +434,7 @@ jobs:
           files: |
             artifacts/dart-flutter-demo-showcase-windows-x64-v*.zip
             artifacts/dart-flutter-demo-showcase-linux-x64-v*.tar.gz
-            artifacts/dart-flutter-demo-showcase-macos-x64-v*.zip
+            artifacts/dart-flutter-demo-showcase-macos-x64-v*.dmg
             artifacts/dart-flutter-demo-showcase-android-universal-v*.apk
             artifacts/dart-flutter-demo-showcase-android-arm64-v*.apk
             artifacts/dart-flutter-demo-showcase-android-x86_64-v*.apk
