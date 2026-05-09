@@ -161,6 +161,13 @@ class _WindowsFallbackState {
       debug.add('Filled `$key` from fallback source.');
     }
   }
+
+  void overwrite(String key, String? value, String reason) {
+    final trimmed = value?.trim() ?? '';
+    if (trimmed.isEmpty) return;
+    result[key] = trimmed;
+    debug.add('Overwrote `$key`: $reason');
+  }
 }
 
 // ── iOS ──────────────────────────────────────────────────────────────────────
@@ -430,7 +437,10 @@ Write-Output "NET|$($ip.IPAddress)"
       [],
       label: 'ipconfig',
     );
-    state.putIfMissing('Local IP', _extractIpconfigIPv4(ip.stdout));
+    final preferredIp = _extractPreferredIpconfigIPv4(ip.stdout);
+    if (preferredIp != null) {
+      state.overwrite('Local IP', preferredIp, 'preferred ipconfig adapter');
+    }
   }
 
   static void _ingestTaggedOutput(
@@ -464,7 +474,10 @@ Write-Output "NET|$($ip.IPAddress)"
         state.putIfMissing('Disk (C:\\)', line.substring(5).trim());
       } else if (line.startsWith('NET|')) {
         matchedAny = true;
-        state.putIfMissing('Local IP', line.substring(4).trim());
+        final ip = _normalizeIpCandidate(line.substring(4).trim());
+        if (ip != null) {
+          state.putIfMissing('Local IP', ip);
+        }
       }
     }
 
@@ -582,17 +595,111 @@ Write-Output "NET|$($ip.IPAddress)"
   }
 
   static String? _extractIpconfigIPv4(String stdout) {
-    for (final line in stdout.split(RegExp(r'\r?\n'))) {
-      if (!line.contains('IPv4')) continue;
-      final match = RegExp(r'(\d{1,3}(?:\.\d{1,3}){3})').firstMatch(line);
-      if (match != null) {
-        final ip = match.group(1)!;
-        if (!ip.startsWith('127.') && !ip.startsWith('169.254.')) {
-          return ip;
-        }
-      }
+    final adapters = _parseIpconfigAdapters(stdout);
+    for (final adapter in adapters) {
+      final ip = _normalizeIpCandidate(adapter.ipv4);
+      if (ip != null) return ip;
     }
     return null;
+  }
+
+  static String? _extractPreferredIpconfigIPv4(String stdout) {
+    final adapters = _parseIpconfigAdapters(stdout);
+    _IpconfigAdapter? best;
+    int? bestScore;
+
+    for (final adapter in adapters) {
+      final ip = _normalizeIpCandidate(adapter.ipv4);
+      if (ip == null) continue;
+
+      var score = 1000;
+      if (adapter.hasDefaultGateway) score -= 200;
+      if (!_looksVirtualOrVpn(adapter.name)) score -= 120;
+      if (ip.startsWith('192.168.')) {
+        score -= 80;
+      } else if (ip.startsWith('10.')) {
+        score -= 60;
+      } else if (_isPrivate172(ip)) {
+        score -= 40;
+      }
+      if (adapter.name.toLowerCase().contains('ethernet')) {
+        score -= 20;
+      }
+
+      if (best == null || score < bestScore!) {
+        best = adapter;
+        bestScore = score;
+      }
+    }
+
+    return best?.ipv4;
+  }
+
+  static List<_IpconfigAdapter> _parseIpconfigAdapters(String stdout) {
+    final lines = stdout.split(RegExp(r'\r?\n'));
+    final adapters = <_IpconfigAdapter>[];
+    _IpconfigAdapter? current;
+
+    for (final rawLine in lines) {
+      final trimmed = rawLine.trimRight();
+      final headerMatch =
+          RegExp(r'^[A-Za-z].* adapter (.+):$').firstMatch(trimmed.trim());
+      if (headerMatch != null) {
+        current = _IpconfigAdapter(name: headerMatch.group(1)!.trim());
+        adapters.add(current);
+        continue;
+      }
+
+      if (current == null) continue;
+
+      final ipv4Match =
+          RegExp(r'IPv4 Address[^\:]*:\s*([0-9.]+)').firstMatch(trimmed);
+      if (ipv4Match != null) {
+        current.ipv4 = ipv4Match.group(1)!.trim();
+      }
+
+      final gatewayMatch =
+          RegExp(r'Default Gateway[^\:]*:\s*(.+)$').firstMatch(trimmed);
+      if (gatewayMatch != null) {
+        final gateway = gatewayMatch.group(1)!.trim();
+        current.hasDefaultGateway = gateway.isNotEmpty;
+      }
+    }
+
+    return adapters;
+  }
+
+  static String? _normalizeIpCandidate(String? value) {
+    final ip = value?.trim() ?? '';
+    if (ip.isEmpty) return null;
+    if (!RegExp(r'^(\d{1,3})(?:\.(\d{1,3})){3}$').hasMatch(ip)) return null;
+    if (ip.startsWith('127.') || ip.startsWith('169.254.')) return null;
+    return ip;
+  }
+
+  static bool _looksVirtualOrVpn(String name) {
+    final lower = name.toLowerCase();
+    const keywords = [
+      'radmin',
+      'vpn',
+      'vmware',
+      'vethernet',
+      'hyper-v',
+      'wsl',
+      'virtual',
+      'todesk',
+      'parsec',
+      'gameviewer',
+    ];
+    return keywords.any(lower.contains);
+  }
+
+  static bool _isPrivate172(String ip) {
+    final parts = ip.split('.');
+    if (parts.length != 4) return false;
+    if (parts[0] != '172') return false;
+    final second = int.tryParse(parts[1]) ?? -1;
+    return second >= 16 && second <= 31;
   }
 
   static String _formatDuration(Duration d) {
@@ -620,6 +727,16 @@ Write-Output "NET|$($ip.IPAddress)"
     if (normalized.length <= maxChars) return normalized;
     return '${normalized.substring(0, maxChars)}\n...<truncated>';
   }
+}
+
+class _IpconfigAdapter {
+  final String name;
+  String? ipv4;
+  bool hasDefaultGateway = false;
+
+  _IpconfigAdapter({
+    required this.name,
+  });
 }
 
 // ── Linux ────────────────────────────────────────────────────────────────────

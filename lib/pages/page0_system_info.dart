@@ -1,6 +1,7 @@
 import 'dart:io' show Platform, Process;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../services/system_info_service.dart';
 import '../widgets/animated_page.dart';
@@ -152,84 +153,86 @@ class _Page0SystemInfoState extends State<Page0SystemInfo> {
     final theme = Theme.of(context);
 
     return AnimatedPageWrapper(
-      child: Scrollbar(
-        child: ListView(
-          physics: const BouncingScrollPhysics(
-            parent: AlwaysScrollableScrollPhysics(),
-          ),
-          padding: const EdgeInsets.only(
-            left: 16,
-            right: 16,
-            top: 12,
-            bottom: 80,
-          ),
-          children: [
-            _buildHeader(theme),
-            const SizedBox(height: 2),
-            _buildSeparator(theme),
-            const SizedBox(height: 8),
-            if (_loadDurationMs != null && !_loading)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Text(
-                  'Loaded in ${_loadDurationMs} ms',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: theme.colorScheme.onSurface.withOpacity(0.5),
-                    fontFamily: 'JetBrainsMono',
+      child: SelectionArea(
+        child: Scrollbar(
+          child: ListView(
+            physics: const BouncingScrollPhysics(
+              parent: AlwaysScrollableScrollPhysics(),
+            ),
+            padding: const EdgeInsets.only(
+              left: 16,
+              right: 16,
+              top: 12,
+              bottom: 80,
+            ),
+            children: [
+              _buildHeader(theme),
+              const SizedBox(height: 2),
+              _buildSeparator(theme),
+              const SizedBox(height: 8),
+              if (_loadDurationMs != null && !_loading)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Text(
+                    'Loaded in $_loadDurationMs ms',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: theme.colorScheme.onSurface.withOpacity(0.5),
+                      fontFamily: 'JetBrainsMono',
+                    ),
                   ),
                 ),
+              if (_error != null && !_loading) _buildErrorBanner(theme),
+              for (final key in _keys)
+                _InfoRow(
+                  label: key,
+                  value: _info[key],
+                  loading: _loading && !_info.containsKey(key),
+                ),
+              const SizedBox(height: 16),
+              Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: [
+                  FilledButton.tonalIcon(
+                    onPressed: _loading ? null : _refresh,
+                    icon: _loading
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.refresh),
+                    label: Text(_loading ? 'Loading...' : 'Refresh'),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: _exporting ? null : _exportLogs,
+                    icon: _exporting
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.download_rounded),
+                    label: Text(_exporting ? 'Exporting...' : 'Export Log'),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: _copying ? null : _copyLogs,
+                    icon: _copying
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.content_copy_rounded),
+                    label: Text(_copying ? 'Copying...' : 'Copy Log'),
+                  ),
+                ],
               ),
-            if (_error != null && !_loading) _buildErrorBanner(theme),
-            for (final key in _keys)
-              _InfoRow(
-                label: key,
-                value: _info[key],
-                loading: _loading && !_info.containsKey(key),
-              ),
-            const SizedBox(height: 16),
-            Wrap(
-              spacing: 12,
-              runSpacing: 12,
-              children: [
-                FilledButton.tonalIcon(
-                  onPressed: _loading ? null : _refresh,
-                  icon: _loading
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.refresh),
-                  label: Text(_loading ? 'Loading...' : 'Refresh'),
-                ),
-                OutlinedButton.icon(
-                  onPressed: _exporting ? null : _exportLogs,
-                  icon: _exporting
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.download_rounded),
-                  label: Text(_exporting ? 'Exporting...' : 'Export Log'),
-                ),
-                OutlinedButton.icon(
-                  onPressed: _copying ? null : _copyLogs,
-                  icon: _copying
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.content_copy_rounded),
-                  label: Text(_copying ? 'Copying...' : 'Copy Log'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            _buildDebugPanel(theme),
-          ],
+              const SizedBox(height: 12),
+              _buildDebugPanel(theme),
+            ],
+          ),
         ),
       ),
     );
@@ -376,61 +379,78 @@ class _InfoRow extends StatelessWidget {
     required this.loading,
   });
 
+  Future<void> _copyRow(BuildContext context) async {
+    final text = '$label\n${value ?? '-'}';
+    await Clipboard.setData(ClipboardData(text: text));
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Copied: $label'),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 7),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 115.5,
-            child: Text(
-              label,
-              style: TextStyle(
-                fontFamily: 'JetBrainsMono',
-                fontWeight: FontWeight.bold,
-                fontSize: 14.4,
-                color: theme.colorScheme.primary,
+    return InkWell(
+      borderRadius: BorderRadius.circular(8),
+      onTap: loading ? null : () => _copyRow(context),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 7),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+              width: 115.5,
+              child: SelectableText(
+                label,
+                style: TextStyle(
+                  fontFamily: 'JetBrainsMono',
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14.4,
+                  color: theme.colorScheme.primary,
+                ),
               ),
             ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: loading
-                ? Row(
-                    children: [
-                      SizedBox(
-                        width: 14,
-                        height: 14,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: theme.colorScheme.primary,
+            const SizedBox(width: 12),
+            Expanded(
+              child: loading
+                  ? Row(
+                      children: [
+                        SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: theme.colorScheme.primary,
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 10),
-                      Text(
-                        'Loading...',
-                        style: TextStyle(
-                          fontFamily: 'JetBrainsMono',
-                          fontSize: 15.6,
-                          color: theme.colorScheme.onSurface.withOpacity(0.55),
+                        const SizedBox(width: 10),
+                        Text(
+                          'Loading...',
+                          style: TextStyle(
+                            fontFamily: 'JetBrainsMono',
+                            fontSize: 15.6,
+                            color: theme.colorScheme.onSurface.withOpacity(0.55),
+                          ),
                         ),
+                      ],
+                    )
+                  : SelectableText(
+                      value ?? '-',
+                      style: TextStyle(
+                        fontFamily: 'JetBrainsMono',
+                        fontSize: 15.6,
+                        color: theme.colorScheme.onSurface,
+                        height: 1.4,
                       ),
-                    ],
-                  )
-                : Text(
-                    value ?? '-',
-                    style: TextStyle(
-                      fontFamily: 'JetBrainsMono',
-                      fontSize: 15.6,
-                      color: theme.colorScheme.onSurface,
-                      height: 1.4,
                     ),
                   ),
-          ),
-        ],
+            ),
+          ],
+        ),
       ),
     );
   }
