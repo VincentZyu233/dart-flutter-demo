@@ -142,7 +142,9 @@ class _HomeShellState extends State<HomeShell> {
                       accountName: Text(appName),
                       accountEmail: Text(version),
                       currentAccountPicture: const CircleAvatar(
-                        child: Icon(Icons.flutter_dash),
+                        backgroundImage: AssetImage(
+                          'assets/images/mahiro-pfp-VincentZyu-square.png',
+                        ),
                       ),
                     );
                   },
@@ -217,7 +219,10 @@ class _HomeShellState extends State<HomeShell> {
       context: context,
       applicationName: 'Dart + Flutter Demo',
       applicationVersion: '${info.version}+${info.buildNumber}',
-      applicationIcon: const Icon(Icons.flutter_dash, size: 48),
+      applicationIcon: const CircleAvatar(
+        radius: 24,
+        backgroundImage: AssetImage('assets/images/mahiro-pfp-VincentZyu-square.png'),
+      ),
       children: [
         const Text(
           'A proof-of-concept app for testing Flutter UI, motion, layout, and cross-platform consistency.',

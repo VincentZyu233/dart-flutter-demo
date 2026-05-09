@@ -1,7 +1,7 @@
 name: dart_flutter_demo
 description: A Flutter UI showcase PoC app.
 publish_to: 'none'
-version: 0.3.1-beta.3+20260510
+version: 0.3.2-beta.1+20260510
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
@@ -25,3 +25,5 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/images/mahiro-pfp-VincentZyu-square.png

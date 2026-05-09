@@ -47,3 +47,9 @@ Thumbs.db
 # Temporary directory and files
 **/tmp/
 **/temp/
+
+# Python venv
+**/venv/
+**/env/
+**/.venv/
+**/.env/
