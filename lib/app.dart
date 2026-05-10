@@ -387,12 +387,10 @@ class _PerfChip extends StatelessWidget {
     final theme = Theme.of(context);
     return AnimatedBuilder(
       animation: Listenable.merge([
-        lastRefreshDurationNotifier,
         shellRebuildCountNotifier,
       ]),
       builder: (context, _) {
         final fps = fpsTracker.fps;
-        final refresh = lastRefreshDurationNotifier.value;
         final rebuilds = shellRebuildCountNotifier.value;
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
@@ -404,9 +402,7 @@ class _PerfChip extends StatelessWidget {
             ),
           ),
           child: Text(
-            'FPS ${fps.toStringAsFixed(0)}  •  '
-            'Refresh ${refresh?.inMilliseconds ?? 0} ms  •  '
-            'Rebuild $rebuilds',
+            'FPS ${fps.toStringAsFixed(0)}  •  Rebuild $rebuilds',
             style: TextStyle(
               fontSize: 10.5,
               fontFamily: 'JetBrainsMono',

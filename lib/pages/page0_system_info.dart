@@ -1,10 +1,9 @@
 import 'dart:async';
-import 'dart:io' show Platform, Process;
+import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../services/app_performance.dart';
 import '../services/system_info_service.dart';
 import '../widgets/animated_page.dart';
 
@@ -21,7 +20,6 @@ class _Page0SystemInfoState extends State<Page0SystemInfo> {
   Set<String> _loadingKeys = {};
   SystemInfoDebugSnapshot _debug = getSystemInfoDebugSnapshot();
   bool _loading = false;
-  bool _autoRefreshEnabled = false;
   bool _exporting = false;
   bool _copying = false;
   bool _debugExpanded = false;
@@ -29,9 +27,7 @@ class _Page0SystemInfoState extends State<Page0SystemInfo> {
   final Stopwatch _loadStopwatch = Stopwatch();
   int? _loadDurationMs;
   int _loadGeneration = 0;
-  Timer? _autoRefreshTimer;
-  static const Duration _autoRefreshInterval = Duration(seconds: 2);
-  final Set<String> _autoRefreshFields = {'Uptime', 'Memory'};
+  Timer? _loadTicker;
 
   List<String> get _keys => [
         'OS',
@@ -50,31 +46,6 @@ class _Page0SystemInfoState extends State<Page0SystemInfo> {
         'Locale',
       ];
 
-  String get _diskKey {
-    if (Platform.isWindows) return 'Disk (C:\\)';
-    if (Platform.isLinux) return 'Disk (/)';
-    return 'Disk';
-  }
-
-  List<String> get _dynamicKeys => [
-        'Uptime',
-        'CPU',
-        'Memory',
-        _diskKey,
-        'Local IP',
-      ];
-
-  Map<String, String> get _autoRefreshOptions => {
-        'Uptime': 'Uptime',
-        'Memory': 'Memory',
-        'CPU': 'CPU',
-        'Disk': _diskKey,
-        'Local IP': 'Local IP',
-      };
-
-  List<String> get _selectedAutoRefreshKeys =>
-      _dynamicKeys.where(_autoRefreshFields.contains).toList();
-
   @override
   void initState() {
     super.initState();
@@ -82,13 +53,8 @@ class _Page0SystemInfoState extends State<Page0SystemInfo> {
     WidgetsBinding.instance.addPostFrameCallback((_) => _loadInfo());
   }
 
-  @override
-  void dispose() {
-    _autoRefreshTimer?.cancel();
-    super.dispose();
-  }
-
   void _startLoading({Iterable<String>? keys}) {
+    _loadTicker?.cancel();
     _loading = true;
     _error = null;
     _loadDurationMs = null;
@@ -96,101 +62,57 @@ class _Page0SystemInfoState extends State<Page0SystemInfo> {
     _loadStopwatch
       ..reset()
       ..start();
+    _loadTicker = Timer.periodic(const Duration(milliseconds: 16), (_) {
+      if (!mounted || !_loading) return;
+      final elapsed = _loadStopwatch.elapsedMilliseconds;
+      if (_loadDurationMs == elapsed) return;
+      setState(() {
+        _loadDurationMs = elapsed;
+      });
+    });
   }
 
   Future<void> _loadInfo({bool forceRefresh = false}) async {
-    await _refreshFields(
-      forceRefresh: forceRefresh,
-      keys: _keys,
-      loadingKeys: _keys,
-    );
+    await _refreshFields(forceRefresh: forceRefresh);
   }
 
   void _refresh() {
     _loadInfo(forceRefresh: true);
   }
 
-  void _setAutoRefreshEnabled(bool value) {
-    if (_autoRefreshEnabled == value) return;
-    setState(() {
-      _autoRefreshEnabled = value;
-    });
-    _syncAutoRefreshTimer();
-    if (value && !_loading) {
-      unawaited(_refreshDynamicFields());
-    }
-  }
-
-  void _toggleAutoRefreshField(String key, bool enabled) {
-    setState(() {
-      final actualKey = _autoRefreshOptions[key] ?? key;
-      if (enabled) {
-        _autoRefreshFields.add(actualKey);
-      } else {
-        _autoRefreshFields.remove(actualKey);
-      }
-      if (_autoRefreshFields.isEmpty) {
-        _autoRefreshFields.add('Uptime');
-      }
-    });
-    if (_autoRefreshEnabled) {
-      _syncAutoRefreshTimer();
-    }
-  }
-
-  void _syncAutoRefreshTimer() {
-    _autoRefreshTimer?.cancel();
-    _autoRefreshTimer = null;
-    if (!_autoRefreshEnabled) return;
-    _autoRefreshTimer = Timer.periodic(_autoRefreshInterval, (_) {
-      if (!mounted || !_autoRefreshEnabled || _loading) return;
-      unawaited(_refreshDynamicFields());
-    });
-  }
-
-  Future<void> _refreshDynamicFields() async {
-    await _refreshFields(
-      forceRefresh: true,
-      keys: _selectedAutoRefreshKeys,
-      loadingKeys: _selectedAutoRefreshKeys,
-    );
-  }
-
-  Future<void> _refreshFields({
-    required bool forceRefresh,
-    required List<String> keys,
-    required Iterable<String> loadingKeys,
-  }) async {
+  Future<void> _refreshFields({required bool forceRefresh}) async {
     if (!mounted) return;
     final generation = ++_loadGeneration;
     try {
       setState(() {
-        _startLoading(keys: loadingKeys);
+        _startLoading();
       });
       await Future<void>.delayed(Duration.zero);
 
-      final info = await _service.getInfo(forceRefresh: forceRefresh);
+      final info = await _service.getInfo(
+        forceRefresh: forceRefresh,
+        onField: (key, value) {
+          if (!mounted || generation != _loadGeneration) return;
+          setState(() {
+            _info[key] = value;
+            _loadingKeys.remove(key);
+          });
+        },
+      );
       if (!mounted || generation != _loadGeneration) return;
-
-      for (final key in keys) {
-        if (!mounted || generation != _loadGeneration) return;
-        setState(() {
-          _info[key] = info[key] ?? _info[key] ?? '-';
-          _loadingKeys.remove(key);
-        });
-        await Future<void>.delayed(Duration.zero);
-      }
 
       if (mounted && generation == _loadGeneration) {
         setState(() {
+          _info.addAll(info);
+          _loadingKeys.removeAll(info.keys);
           _debug = getSystemInfoDebugSnapshot();
           _loading = false;
           _error = null;
           _loadStopwatch.stop();
           _loadDurationMs = _loadStopwatch.elapsedMilliseconds;
         });
-        lastRefreshDurationNotifier.value =
-            Duration(milliseconds: _loadDurationMs ?? 0);
+        _loadTicker?.cancel();
+        _loadTicker = null;
       }
     } catch (e) {
       if (mounted && generation == _loadGeneration) {
@@ -202,8 +124,8 @@ class _Page0SystemInfoState extends State<Page0SystemInfo> {
           _loadStopwatch.stop();
           _loadDurationMs = _loadStopwatch.elapsedMilliseconds;
         });
-        lastRefreshDurationNotifier.value =
-            Duration(milliseconds: _loadDurationMs ?? 0);
+        _loadTicker?.cancel();
+        _loadTicker = null;
       }
     }
   }
@@ -238,6 +160,12 @@ class _Page0SystemInfoState extends State<Page0SystemInfo> {
         });
       }
     }
+  }
+
+  @override
+  void dispose() {
+    _loadTicker?.cancel();
+    super.dispose();
   }
 
   Future<void> _copyLogs() async {
@@ -298,7 +226,7 @@ class _Page0SystemInfoState extends State<Page0SystemInfo> {
                 Padding(
                   padding: const EdgeInsets.only(bottom: 8),
                   child: Text(
-                    'Loaded in $_loadDurationMs ms',
+                    'Loaded in ${_loadDurationMs ?? 0} ms',
                     style: TextStyle(
                       fontSize: 11,
                       color: theme.colorScheme.onSurface.withOpacity(0.5),
@@ -314,8 +242,6 @@ class _Page0SystemInfoState extends State<Page0SystemInfo> {
                   loading: _loadingKeys.contains(key),
                 ),
               const SizedBox(height: 16),
-              _buildAutoRefreshPanel(theme),
-              const SizedBox(height: 12),
               Wrap(
                 spacing: 12,
                 runSpacing: 12,
@@ -359,81 +285,6 @@ class _Page0SystemInfoState extends State<Page0SystemInfo> {
               _buildDebugPanel(theme),
             ],
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildAutoRefreshPanel(ThemeData theme) {
-    final autoKeys = _autoRefreshOptions.entries.toList();
-    return Container(
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.22),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(
-          color: theme.colorScheme.outlineVariant.withOpacity(0.45),
-        ),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SwitchListTile.adaptive(
-              dense: true,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 12),
-              value: _autoRefreshEnabled,
-              onChanged: _setAutoRefreshEnabled,
-              title: Text(
-                'Auto refresh',
-                style: TextStyle(
-                  fontFamily: 'JetBrainsMono',
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.bold,
-                  color: theme.colorScheme.primary,
-                ),
-              ),
-              subtitle: Text(
-                'Refresh selected fields every 2000 ms',
-                style: TextStyle(
-                  fontFamily: 'JetBrainsMono',
-                  fontSize: 10.5,
-                  color: theme.colorScheme.onSurface.withOpacity(0.6),
-                ),
-              ),
-            ),
-            if (_autoRefreshEnabled) ...[
-              const SizedBox(height: 2),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: Text(
-                  'Selected fields',
-                  style: TextStyle(
-                    fontFamily: 'JetBrainsMono',
-                    fontSize: 10,
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 8),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    for (final key in autoKeys)
-                      FilterChip(
-                        selected: _autoRefreshFields.contains(key.value),
-                        onSelected: (value) =>
-                            _toggleAutoRefreshField(key.key, value),
-                        label: Text(key.key),
-                      ),
-                  ],
-                ),
-              ),
-            ],
-          ],
         ),
       ),
     );

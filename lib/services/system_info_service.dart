@@ -20,7 +20,10 @@ String _ptrToString(Pointer<Uint8> ptr) {
 }
 
 abstract class SystemInfoService {
-  Future<Map<String, String>> getInfo({bool forceRefresh = false});
+  Future<Map<String, String>> getInfo({
+    bool forceRefresh = false,
+    void Function(String key, String value)? onField,
+  });
 }
 
 class SystemInfoDebugSnapshot {
@@ -149,8 +152,9 @@ class _ProcessTrace {
 class _WindowsFallbackState {
   final _DebugLogBuffer debug;
   final Map<String, String> result;
+  final void Function(String key, String value)? onField;
 
-  _WindowsFallbackState(this.debug, this.result);
+  _WindowsFallbackState(this.debug, this.result, {this.onField});
 
   void putIfMissing(String key, String? value) {
     final trimmed = value?.trim() ?? '';
@@ -158,6 +162,7 @@ class _WindowsFallbackState {
     final current = result[key]?.trim() ?? '';
     if (current.isEmpty || current == 'unknown' || current == 'unavailable') {
       result[key] = trimmed;
+      onField?.call(key, trimmed);
       debug.add('Filled `$key` from fallback source.');
     }
   }
@@ -166,6 +171,7 @@ class _WindowsFallbackState {
     final trimmed = value?.trim() ?? '';
     if (trimmed.isEmpty) return;
     result[key] = trimmed;
+    onField?.call(key, trimmed);
     debug.add('Overwrote `$key`: $reason');
   }
 }
@@ -185,14 +191,23 @@ class _IOSSystemInfo implements SystemInfoService {
   static SystemInfoDebugSnapshot get debugSnapshot => _debugSnapshot;
 
   @override
-  Future<Map<String, String>> getInfo({bool forceRefresh = false}) async {
+  Future<Map<String, String>> getInfo({
+    bool forceRefresh = false,
+    void Function(String key, String value)? onField,
+  }) async {
     if (!forceRefresh && _cachedInfo != null) {
+      for (final entry in _cachedInfo!.entries) {
+        onField?.call(entry.key, entry.value);
+      }
       return Map<String, String>.from(_cachedInfo!);
     }
     try {
       final result = await _channel.invokeMapMethod<String, String>('getInfo');
       if (result != null) {
         _cachedInfo = Map<String, String>.from(result);
+        for (final entry in result.entries) {
+          onField?.call(entry.key, entry.value);
+        }
         _debugSnapshot = SystemInfoDebugSnapshot(
           platform: 'ios',
           source: 'method-channel',
@@ -250,8 +265,14 @@ class _WindowsSystemInfo implements SystemInfoService {
   static SystemInfoDebugSnapshot get debugSnapshot => _debugSnapshot;
 
   @override
-  Future<Map<String, String>> getInfo({bool forceRefresh = false}) {
+  Future<Map<String, String>> getInfo({
+    bool forceRefresh = false,
+    void Function(String key, String value)? onField,
+  }) {
     if (!forceRefresh && _cachedInfo != null) {
+      for (final entry in _cachedInfo!.entries) {
+        onField?.call(entry.key, entry.value);
+      }
       return Future.value(Map<String, String>.from(_cachedInfo!));
     }
 
@@ -261,7 +282,7 @@ class _WindowsSystemInfo implements SystemInfoService {
 
     late final Future<Map<String, String>> future;
     future = Future<Map<String, String>>(() async {
-      final result = await _getInfoAsync();
+      final result = await _getInfoAsync(onField: onField);
       _cachedInfo = Map<String, String>.from(result);
       return Map<String, String>.from(result);
     });
@@ -275,7 +296,9 @@ class _WindowsSystemInfo implements SystemInfoService {
     return future;
   }
 
-  static Future<Map<String, String>> _getInfoAsync() async {
+  static Future<Map<String, String>> _getInfoAsync({
+    void Function(String key, String value)? onField,
+  }) async {
     final debug = _DebugLogBuffer();
     debug.add('Windows system info request started.');
 
@@ -297,6 +320,9 @@ class _WindowsSystemInfo implements SystemInfoService {
       final decoded = jsonDecode(jsonStr) as Map<String, dynamic>;
       final result = decoded.map((k, v) => MapEntry(k, v.toString()));
       result['Locale'] = _normalizeWindowsLocale(result['Locale']);
+      for (final entry in result.entries) {
+        onField?.call(entry.key, entry.value);
+      }
       _recordWindowsDebug(
         source: 'ffi',
         logs: debug.snapshot(),
@@ -319,11 +345,18 @@ class _WindowsSystemInfo implements SystemInfoService {
       'Locale': _normalizeWindowsLocale(Platform.localeName),
     };
 
-    final state = _WindowsFallbackState(debug, result);
+    final state = _WindowsFallbackState(debug, result, onField: onField);
+    for (final entry in result.entries) {
+      onField?.call(entry.key, entry.value);
+    }
     debug.add('Entering fallback chain.');
+    await _tryNativeCommands(state);
+    /*
+    Historical slow-path fallbacks kept for reference:
+    Uncomment only if the faster native chain stops working on some build.
     await _tryStandalonePs1(state);
     await _tryInlinePowerShell(state);
-    await _tryNativeCommands(state);
+    */
 
     _recordWindowsDebug(
       source: 'fallback',
@@ -347,6 +380,8 @@ class _WindowsSystemInfo implements SystemInfoService {
   }
 
   static Future<void> _tryStandalonePs1(_WindowsFallbackState state) async {
+    // Historical fallback path:
+    // keep this around for reference, but prefer the faster native chain first.
     final ps1 = File(r'plugins\windows\SystemInfo.ps1');
     state.debug.add('Checking PS1 path: ${ps1.absolute.path}');
     if (!ps1.existsSync()) {
@@ -364,6 +399,8 @@ class _WindowsSystemInfo implements SystemInfoService {
   }
 
   static Future<void> _tryInlinePowerShell(_WindowsFallbackState state) async {
+    // Historical fallback path:
+    // inline PowerShell worked, but it is comparatively expensive.
     final script = r'''
 $os = Get-CimInstance Win32_OperatingSystem
 $cs = Get-CimInstance Win32_ComputerSystem
@@ -422,6 +459,10 @@ Write-Output "NET|$($ip.IPAddress)"
     final cpuValue = _mergeCpuFallback(cpuName.stdout, cpuSpeed.stdout);
     state.putIfMissing('CPU', cpuValue);
 
+    /*
+    Historical fallback path:
+    WMIC is slower and deprecated on newer Windows builds, so keep the old
+    parsing code here as a reference but avoid running it in the hot path.
     final memory = await _runProcess(
       state.debug,
       'wmic',
@@ -437,6 +478,7 @@ Write-Output "NET|$($ip.IPAddress)"
       label: 'wmic disk',
     );
     state.putIfMissing('Disk (C:\\)', _extractWmicDisk(disk.stdout));
+    */
 
     final ip = await _runProcess(
       state.debug,
@@ -463,11 +505,11 @@ Write-Output "NET|$($ip.IPAddress)"
       if (line.startsWith('UPTIME|')) {
         matchedAny = true;
         final raw = line.substring(7).trim();
-        final dt = DateTime.tryParse(raw);
+        final dt = _parseWindowsBootTimestamp(raw);
         state.putIfMissing(
           'Uptime',
           dt != null
-              ? _formatDuration(DateTime.now().toUtc().difference(dt))
+              ? _formatDuration(DateTime.now().difference(dt))
               : raw,
         );
       } else if (line.startsWith('CPU|')) {
@@ -531,9 +573,9 @@ Write-Output "NET|$($ip.IPAddress)"
       if (trimmed.startsWith('Statistics since')) {
         final raw = trimmed.substring('Statistics since'.length).trim();
         if (raw.isEmpty) return null;
-        final boot = DateTime.tryParse(raw);
+        final boot = _parseWindowsBootTimestamp(raw);
         return boot != null
-            ? _formatDuration(DateTime.now().toUtc().difference(boot))
+            ? _formatDuration(DateTime.now().difference(boot))
             : raw;
       }
     }
@@ -718,6 +760,33 @@ Write-Output "NET|$($ip.IPAddress)"
     return buf.toString();
   }
 
+  static DateTime? _parseWindowsBootTimestamp(String raw) {
+    final trimmed = raw.trim();
+    if (trimmed.isEmpty) return null;
+
+    final slashMatch = RegExp(
+      r'^(\d{1,2})/(\d{1,2})/(\d{4})\s+(\d{1,2}):(\d{2}):(\d{2})$',
+    ).firstMatch(trimmed);
+    if (slashMatch != null) {
+      final month = int.tryParse(slashMatch.group(1)!);
+      final day = int.tryParse(slashMatch.group(2)!);
+      final year = int.tryParse(slashMatch.group(3)!);
+      final hour = int.tryParse(slashMatch.group(4)!);
+      final minute = int.tryParse(slashMatch.group(5)!);
+      final second = int.tryParse(slashMatch.group(6)!);
+      if (month != null &&
+          day != null &&
+          year != null &&
+          hour != null &&
+          minute != null &&
+          second != null) {
+        return DateTime(year, month, day, hour, minute, second);
+      }
+    }
+
+    return DateTime.tryParse(trimmed);
+  }
+
   static String _normalizeWindowsLocale(String? locale) {
     final trimmed = locale?.trim() ?? '';
     if (trimmed.isNotEmpty &&
@@ -760,7 +829,10 @@ class _LinuxSystemInfo implements SystemInfoService {
   static SystemInfoDebugSnapshot get debugSnapshot => _debugSnapshot;
 
   @override
-  Future<Map<String, String>> getInfo({bool forceRefresh = false}) {
+  Future<Map<String, String>> getInfo({
+    bool forceRefresh = false,
+    void Function(String key, String value)? onField,
+  }) {
     if (!forceRefresh && _cachedInfo != null) {
       return Future.value(Map<String, String>.from(_cachedInfo!));
     }
@@ -770,7 +842,8 @@ class _LinuxSystemInfo implements SystemInfoService {
     }
 
     late final Future<Map<String, String>> future;
-    future = Future<Map<String, String>>(_getInfoSync).then((result) {
+    future = Future<Map<String, String>>(() {
+      final result = _getInfoSync(onField: onField);
       _cachedInfo = Map<String, String>.from(result);
       return Map<String, String>.from(result);
     });
@@ -784,7 +857,9 @@ class _LinuxSystemInfo implements SystemInfoService {
     return future;
   }
 
-  static Map<String, String> _getInfoSync() {
+  static Map<String, String> _getInfoSync({
+    void Function(String key, String value)? onField,
+  }) {
     final result = {
       'OS': _getOS(),
       'Host': _getHostname(),
@@ -796,6 +871,9 @@ class _LinuxSystemInfo implements SystemInfoService {
       'Local IP': _getLocalIP(),
       'Locale': _getLocale(),
     };
+    for (final entry in result.entries) {
+      onField?.call(entry.key, entry.value);
+    }
     _debugSnapshot = SystemInfoDebugSnapshot(
       platform: 'linux',
       source: 'dart-io',
@@ -976,13 +1054,22 @@ class _AndroidSystemInfo implements SystemInfoService {
   static SystemInfoDebugSnapshot get debugSnapshot => _debugSnapshot;
 
   @override
-  Future<Map<String, String>> getInfo({bool forceRefresh = false}) async {
+  Future<Map<String, String>> getInfo({
+    bool forceRefresh = false,
+    void Function(String key, String value)? onField,
+  }) async {
     if (!forceRefresh && _cachedInfo != null) {
+      for (final entry in _cachedInfo!.entries) {
+        onField?.call(entry.key, entry.value);
+      }
       return Map<String, String>.from(_cachedInfo!);
     }
     final result = await _channel.invokeMapMethod<String, String>('getInfo');
     final info = result ?? {};
     _cachedInfo = Map<String, String>.from(info);
+    for (final entry in info.entries) {
+      onField?.call(entry.key, entry.value);
+    }
     _debugSnapshot = SystemInfoDebugSnapshot(
       platform: 'android',
       source: 'method-channel',

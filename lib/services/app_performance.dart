@@ -1,9 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/scheduler.dart';
 
-final ValueNotifier<Duration?> lastRefreshDurationNotifier =
-    ValueNotifier<Duration?>(null);
-
 final ValueNotifier<int> shellRebuildCountNotifier = ValueNotifier<int>(0);
 
 class FrameFpsTracker {
@@ -15,11 +12,7 @@ class FrameFpsTracker {
   void addTimings(List<FrameTiming> timings) {
     final nowMicros = DateTime.now().microsecondsSinceEpoch;
     for (final timing in timings) {
-      _frameTimestampsMicros.add(
-        timing.totalSpan.inMicroseconds > 0
-            ? nowMicros
-            : nowMicros,
-      );
+      _frameTimestampsMicros.add(nowMicros);
     }
     if (_frameTimestampsMicros.length > 180) {
       _frameTimestampsMicros
