@@ -143,8 +143,8 @@ jobs:
               mkdir -p ios/Runner
               cp plugins/ios/SystemInfoPlugin.swift ios/Runner/
               ;;
-          esac
-          echo "✓ Copied plugins/${{ matrix.platform }} to platform directory"
+            esac
+            echo "✓ Copied plugins/${{ matrix.platform }} to platform directory"
 
       - name: Patch Windows runner for SystemInfo plugin
         if: matrix.platform == 'windows'
