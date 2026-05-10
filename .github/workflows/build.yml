@@ -309,7 +309,7 @@ jobs:
 
       - name: Build (macOS)
         if: matrix.platform == 'macos-x64' || matrix.platform == 'macos-arm64'
-        run: flutter build macos --release
+        run: flutter build macos --release --no-enable-impeller
 
       - name: Patch macOS for SystemInfo plugin
         if: matrix.platform == 'macos-x64' || matrix.platform == 'macos-arm64'
