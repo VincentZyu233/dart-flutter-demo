@@ -115,10 +115,11 @@ public class SystemInfoPlugin: NSObject, FlutterPlugin {
             ])
             if let total = values.volumeTotalCapacity,
                let available = values.volumeAvailableCapacityForImportantUsage ?? values.volumeAvailableCapacity.map(Int64.init) {
-                let used = max(total - available, 0)
+                let total64 = Int64(total)
+                let used = max(total64 - available, 0)
                 let totalGiB = Double(total) / (1024.0 * 1024.0 * 1024.0)
                 let usedGiB = Double(used) / (1024.0 * 1024.0 * 1024.0)
-                let pct = total > 0 ? Int((Double(used) / Double(total)) * 100) : 0
+                let pct = total64 > 0 ? Int((Double(used) / Double(total64)) * 100) : 0
                 return String(format: "%.2f GiB / %.2f GiB (%d%%)", usedGiB, totalGiB, pct)
             }
         } catch {}
