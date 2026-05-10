@@ -139,6 +139,10 @@ jobs:
               cp plugins/linux/system_info_plugin.cc linux/runner/plugins/system_info/
               cp plugins/linux/system_info_plugin.h linux/runner/plugins/system_info/
               ;;
+            macos-x64|macos-arm64)
+              mkdir -p macos/Runner
+              cp plugins/macos/SystemInfoPlugin.swift macos/Runner/
+              ;;
             android-multiarch)
               mkdir -p android/app/src/main/kotlin/com/example/dart_flutter_demo
               cp plugins/android/SystemInfoPlugin.kt android/app/src/main/kotlin/com/example/dart_flutter_demo/
@@ -306,6 +310,23 @@ jobs:
       - name: Build (macOS)
         if: matrix.platform == 'macos-x64' || matrix.platform == 'macos-arm64'
         run: flutter build macos --release
+
+      - name: Patch macOS for SystemInfo plugin
+        if: matrix.platform == 'macos-x64' || matrix.platform == 'macos-arm64'
+        shell: bash
+        run: |
+          python3 -c "
+          with open('macos/Runner/AppDelegate.swift', 'r') as f:
+              swift = f.read()
+          if 'SystemInfoPlugin.register(with: self)' not in swift:
+              swift = swift.replace(
+                  'GeneratedPluginRegistrant.register(with: self)',
+                  'GeneratedPluginRegistrant.register(with: self)\n    SystemInfoPlugin.register(with: self)'
+              )
+          with open('macos/Runner/AppDelegate.swift', 'w') as f:
+              f.write(swift)
+          "
+          echo "=== Patched macOS AppDelegate.swift ===" && head -5 macos/Runner/AppDelegate.swift
 
       - name: Package macOS DMG
         if: matrix.platform == 'macos-x64' || matrix.platform == 'macos-arm64'

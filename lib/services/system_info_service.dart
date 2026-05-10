@@ -67,6 +67,7 @@ SystemInfoService createSystemInfoService() {
   if (Platform.isLinux) return _LinuxSystemInfo();
   if (Platform.isAndroid) return _AndroidSystemInfo();
   if (Platform.isIOS) return _IOSSystemInfo();
+  if (Platform.isMacOS) return _MacOSSystemInfo();
   throw UnsupportedError('Platform not supported');
 }
 
@@ -75,6 +76,7 @@ SystemInfoDebugSnapshot getSystemInfoDebugSnapshot() {
   if (Platform.isLinux) return _LinuxSystemInfo.debugSnapshot;
   if (Platform.isAndroid) return _AndroidSystemInfo.debugSnapshot;
   if (Platform.isIOS) return _IOSSystemInfo.debugSnapshot;
+  if (Platform.isMacOS) return _MacOSSystemInfo.debugSnapshot;
   return SystemInfoDebugSnapshot(
     platform: Platform.operatingSystem,
     source: 'unsupported',
@@ -244,6 +246,81 @@ class _IOSSystemInfo implements SystemInfoService {
       platform: 'ios',
       source: 'fallback',
       logs: const ['Using basic dart:io fallback on iOS.'],
+      data: Map<String, String>.from(result),
+    );
+    return result;
+  }
+}
+
+// ── macOS ────────────────────────────────────────────────────────────────────
+
+class _MacOSSystemInfo implements SystemInfoService {
+  static const _channel = MethodChannel('dart_flutter_demo/system_info');
+  static Map<String, String>? _cachedInfo;
+  static SystemInfoDebugSnapshot _debugSnapshot = const SystemInfoDebugSnapshot(
+    platform: 'macos',
+    source: 'idle',
+    logs: <String>[],
+    data: <String, String>{},
+  );
+
+  static SystemInfoDebugSnapshot get debugSnapshot => _debugSnapshot;
+
+  @override
+  Future<Map<String, String>> getInfo({
+    bool forceRefresh = false,
+    void Function(String key, String value)? onField,
+  }) async {
+    if (!forceRefresh && _cachedInfo != null) {
+      for (final entry in _cachedInfo!.entries) {
+        onField?.call(entry.key, entry.value);
+      }
+      return Map<String, String>.from(_cachedInfo!);
+    }
+    try {
+      final result = await _channel.invokeMapMethod<String, String>('getInfo');
+      if (result != null) {
+        _cachedInfo = Map<String, String>.from(result);
+        for (final entry in result.entries) {
+          onField?.call(entry.key, entry.value);
+        }
+        _debugSnapshot = SystemInfoDebugSnapshot(
+          platform: 'macos',
+          source: 'method-channel',
+          logs: const ['Loaded via macOS method channel.'],
+          data: Map<String, String>.from(result),
+        );
+        return Map<String, String>.from(result);
+      }
+    } catch (e) {
+      _debugSnapshot = SystemInfoDebugSnapshot(
+        platform: 'macos',
+        source: 'fallback',
+        logs: ['MethodChannel failed: $e'],
+        data: const {},
+      );
+    }
+
+    final fallback = _getInfoFallback();
+    _cachedInfo = Map<String, String>.from(fallback);
+    return fallback;
+  }
+
+  Map<String, String> _getInfoFallback() {
+    final result = <String, String>{};
+    result['OS'] = Platform.operatingSystemVersion;
+    result['Host'] = Platform.localHostname;
+    result['Kernel'] = 'Darwin ${Platform.operatingSystemVersion}';
+    result['Uptime'] = 'unavailable';
+    result['CPU'] = '${Platform.numberOfProcessors} cores';
+    result['Memory'] = 'unavailable';
+    result['Disk'] = 'unavailable';
+    result['Local IP'] = 'unavailable';
+    result['Locale'] = Platform.localeName;
+    _debugSnapshot = SystemInfoDebugSnapshot(
+      platform: 'macos',
+      source: 'fallback',
+      logs: const ['Using basic dart:io fallback on macOS.'],
       data: Map<String, String>.from(result),
     );
     return result;

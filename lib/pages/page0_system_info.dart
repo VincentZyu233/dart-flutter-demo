@@ -563,10 +563,6 @@ abstract class PlatformInfo {
   static String? _cachedHostname;
 
   static String _hostnameViaProcess() {
-    try {
-      final result = Process.runSync('hostname', [], runInShell: true);
-      if (result.exitCode == 0) return result.stdout.toString().trim();
-    } catch (_) {}
     return 'localhost';
   }
 }
