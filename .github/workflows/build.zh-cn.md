@@ -38,6 +38,15 @@ git commit -m "update readme"
 git commit -m "fix typo"
 ```
 
+## Git Profile 配置
+
+如果 GitHub 仓库首页或 Release 页面显示的用户信息不对，执行：
+
+```bash
+git config --global --replace-all user.name "VincentZyu233"
+git config --global user.email "1830540513zyu@gmail.com"
+```
+
 ## 流水线阶段
 
 ### 阶段一：检查 Commit 信息

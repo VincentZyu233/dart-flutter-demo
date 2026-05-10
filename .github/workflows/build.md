@@ -38,6 +38,15 @@ git commit -m "update readme"
 git commit -m "fix typo"
 ```
 
+## Git Profile Setup
+
+If the GitHub profile shown on the repository homepage or release notes is wrong, run:
+
+```bash
+git config --global --replace-all user.name "VincentZyu233"
+git config --global user.email "1830540513zyu@gmail.com"
+```
+
 ## Pipeline Stages
 
 ### Stage 1: Check Commit Message

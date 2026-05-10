@@ -190,255 +190,301 @@ class _Page2TypographyStudioState extends State<Page2TypographyStudio> {
     final previewText = _previewTextController.text;
 
     return AnimatedPageWrapper(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Container(
-              constraints: const BoxConstraints(minHeight: 200),
-              padding: const EdgeInsets.all(32),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(16),
-              ),
-                child: Center(
-                  child: Text(
-                    previewText,
-                    textAlign: TextAlign.center,
-                    style: _textStyle.copyWith(color: _textColor),
-                  ),
-                ),
-            ),
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.surfaceContainerLow,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: theme.colorScheme.outlineVariant),
-              ),
-              child: Text(
-                previewText.toUpperCase(),
-                textAlign: TextAlign.center,
-                style: _textStyle.copyWith(
-                  color: _textColor.withValues(alpha: 0.6),
-                  fontSize: _fontSize * 0.6,
-                ),
-              ),
-            ),
-            const SizedBox(height: 32),
-            _buildSlider(
-              label: 'Font Size',
-              value: _fontSize,
-              min: 12,
-              max: 72,
-              display: '${_fontSize.round()} px',
-              onChanged: (value) => setState(() => _fontSize = value),
-            ),
-            _buildSlider(
-              label: 'Letter Spacing',
-              value: _letterSpacing,
-              min: -2,
-              max: 12,
-              display: '${_letterSpacing.toStringAsFixed(1)} px',
-              onChanged: (value) => setState(() => _letterSpacing = value),
-            ),
-            _buildSlider(
-              label: 'Line Height',
-              value: _lineHeight,
-              min: 0.8,
-              max: 3.0,
-              display: '${_lineHeight.toStringAsFixed(2)}x',
-              onChanged: (value) => setState(() => _lineHeight = value),
-            ),
-            const SizedBox(height: 12),
-            RadioListTile<_FontMode>(
-              title: const Text('System Default'),
-              value: _FontMode.systemDefault,
-              groupValue: _fontMode,
-              onChanged: (value) {
-                if (value == null) return;
-                setState(() => _fontMode = value);
-              },
-            ),
-            RadioListTile<_FontMode>(
-              title: const Text('Google Fonts – Playfair Display'),
-              subtitle: const Text('Online packaged font from the Google Fonts plugin.'),
-              value: _FontMode.googleFonts,
-              groupValue: _fontMode,
-              onChanged: (value) {
-                if (value == null) return;
-                setState(() => _fontMode = value);
-              },
-            ),
-            RadioListTile<_FontMode>(
-              title: const Text('Local Font File'),
-              subtitle: Text(
-                _localFontStatus ?? 'Load one local font from disk for this session.',
-              ),
-              value: _FontMode.localFile,
-              groupValue: _fontMode,
-              onChanged: (value) {
-                if (value == null) return;
-                setState(() => _fontMode = value);
-              },
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _fontPathController,
-              decoration: InputDecoration(
-                labelText: 'Local font path',
-                hintText: '/path/to/local/font.ttf',
-                border: const OutlineInputBorder(),
-                suffixIcon: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IconButton(
-                      tooltip: 'Clear path',
-                      onPressed: () {
-                        _fontPathController.clear();
-                        setState(() {
-                          _localFontStatus = 'Path cleared.';
-                        });
-                      },
-                      icon: const Icon(Icons.close_rounded),
-                    ),
-                    IconButton(
-                      tooltip: 'Browse font file',
-                      onPressed: _pickLocalFontPath,
-                      icon: const Icon(Icons.folder_open_rounded),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Row(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final width = constraints.maxWidth;
+          final columns = width < 700
+              ? 1
+              : width < 1100
+                  ? 2
+                  : 3;
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                FilledButton.icon(
-                  onPressed: _loadingLocalFont ? null : _loadLocalFont,
-                  icon: _loadingLocalFont
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.upload_file),
-                  label: Text(_loadingLocalFont ? 'Loading...' : 'Load Local Font'),
+                _buildPreviewMasonry(theme, previewText, columns),
+                const SizedBox(height: 32),
+                _buildControls(theme),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildPreviewMasonry(ThemeData theme, String previewText, int columns) {
+    final cards = <Widget>[
+      Container(
+        constraints: const BoxConstraints(minHeight: 200),
+        padding: const EdgeInsets.all(32),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Center(
+          child: Text(
+            previewText,
+            textAlign: TextAlign.center,
+            style: _textStyle.copyWith(color: _textColor),
+          ),
+        ),
+      ),
+      Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: theme.colorScheme.outlineVariant),
+        ),
+        child: Text(
+          previewText.toUpperCase(),
+          textAlign: TextAlign.center,
+          style: _textStyle.copyWith(
+            color: _textColor.withValues(alpha: 0.6),
+            fontSize: _fontSize * 0.6,
+          ),
+        ),
+      ),
+    ];
+
+    final buckets = List.generate(columns, (_) => <Widget>[]);
+    for (var i = 0; i < cards.length; i++) {
+      buckets[i % columns].add(cards[i]);
+    }
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: List.generate(columns, (index) {
+        return Expanded(
+          child: Padding(
+            padding: EdgeInsets.only(right: index == columns - 1 ? 0 : 12),
+            child: Column(
+              children: [
+                for (var i = 0; i < buckets[index].length; i++) ...[
+                  buckets[index][i],
+                  if (i != buckets[index].length - 1) const SizedBox(height: 12),
+                ],
+              ],
+            ),
+          ),
+        );
+      }),
+    );
+  }
+
+  Widget _buildControls(ThemeData theme) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _buildSlider(
+          label: 'Font Size',
+          value: _fontSize,
+          min: 12,
+          max: 72,
+          display: '${_fontSize.round()} px',
+          onChanged: (value) => setState(() => _fontSize = value),
+        ),
+        _buildSlider(
+          label: 'Letter Spacing',
+          value: _letterSpacing,
+          min: -2,
+          max: 12,
+          display: '${_letterSpacing.toStringAsFixed(1)} px',
+          onChanged: (value) => setState(() => _letterSpacing = value),
+        ),
+        _buildSlider(
+          label: 'Line Height',
+          value: _lineHeight,
+          min: 0.8,
+          max: 3.0,
+          display: '${_lineHeight.toStringAsFixed(2)}x',
+          onChanged: (value) => setState(() => _lineHeight = value),
+        ),
+        const SizedBox(height: 12),
+        RadioListTile<_FontMode>(
+          title: const Text('System Default'),
+          value: _FontMode.systemDefault,
+          groupValue: _fontMode,
+          onChanged: (value) {
+            if (value == null) return;
+            setState(() => _fontMode = value);
+          },
+        ),
+        RadioListTile<_FontMode>(
+          title: const Text('Google Fonts – Playfair Display'),
+          subtitle: const Text('Online packaged font from the Google Fonts plugin.'),
+          value: _FontMode.googleFonts,
+          groupValue: _fontMode,
+          onChanged: (value) {
+            if (value == null) return;
+            setState(() => _fontMode = value);
+          },
+        ),
+        RadioListTile<_FontMode>(
+          title: const Text('Local Font File'),
+          subtitle: Text(
+            _localFontStatus ?? 'Load one local font from disk for this session.',
+          ),
+          value: _FontMode.localFile,
+          groupValue: _fontMode,
+          onChanged: (value) {
+            if (value == null) return;
+            setState(() => _fontMode = value);
+          },
+        ),
+        const SizedBox(height: 8),
+        TextField(
+          controller: _fontPathController,
+          decoration: InputDecoration(
+            labelText: 'Local font path',
+            hintText: '/path/to/local/font.ttf',
+            border: const OutlineInputBorder(),
+            suffixIcon: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  tooltip: 'Clear path',
+                  onPressed: () {
+                    _fontPathController.clear();
+                    setState(() {
+                      _localFontStatus = 'Path cleared.';
+                    });
+                  },
+                  icon: const Icon(Icons.close_rounded),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    'One font at a time, session only.',
-                    style: TextStyle(color: theme.colorScheme.onSurface.withValues(alpha: 0.6)),
-                  ),
+                IconButton(
+                  tooltip: 'Browse font file',
+                  onPressed: _pickLocalFontPath,
+                  icon: const Icon(Icons.folder_open_rounded),
                 ),
               ],
             ),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: _palette.map((color) {
-                final selected = _textColor.value == color.value;
-                final borderColor = color.computeLuminance() > 0.65
-                    ? Colors.black26
-                    : Colors.white70;
-                return GestureDetector(
-                  onTap: () => setState(() => _textColor = color),
-                  child: Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      color: color,
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: selected ? borderColor : Colors.grey,
-                        width: selected ? 3 : 1,
-                      ),
-                      boxShadow: selected
-                          ? [
-                              BoxShadow(
-                                color: color.withValues(alpha: 0.5),
-                                blurRadius: 8,
-                              ),
-                            ]
-                          : const [],
-                    ),
-                  ),
-                );
-              }).toList(),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            FilledButton.icon(
+              onPressed: _loadingLocalFont ? null : _loadLocalFont,
+              icon: _loadingLocalFont
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.upload_file),
+              label: Text(_loadingLocalFont ? 'Loading...' : 'Load Local Font'),
             ),
-            const SizedBox(height: 12),
-            OutlinedButton.icon(
-              onPressed: () async {
-                var tempColor = _textColor;
-                final accepted = await showDialog<bool>(
-                  context: context,
-                  builder: (context) {
-                    return AlertDialog(
-                      title: const Text('Pick text color'),
-                      content: SingleChildScrollView(
-                        child: ColorPicker(
-                          pickerColor: tempColor,
-                          onColorChanged: (color) => tempColor = color,
-                          enableAlpha: false,
-                          displayThumbColor: true,
-                          labelTypes: const [],
-                          pickerAreaHeightPercent: 0.75,
-                        ),
-                      ),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(context, false),
-                          child: const Text('Cancel'),
-                        ),
-                        FilledButton(
-                          onPressed: () => Navigator.pop(context, true),
-                          child: const Text('Apply'),
-                        ),
-                      ],
-                    );
-                  },
-                );
-                if (accepted == true && mounted) {
-                  setState(() => _textColor = tempColor);
-                }
-              },
-              icon: const Icon(Icons.color_lens_outlined),
-              label: const Text('Custom Color Picker'),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Current: $_rgbText  $_hexText',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _previewTextController,
-              maxLength: 100,
-              minLines: 1,
-              maxLines: 4,
-              onChanged: (_) => setState(() {}),
-              decoration: const InputDecoration(
-                labelText: 'Preview text',
-                hintText: 'Type any text you want to preview',
-                border: OutlineInputBorder(),
-                alignLabelWithHint: true,
-              ),
-            ),
-            Text(
-              'Live preview, 0-100 characters. Changes here update the typography preview above immediately.',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'One font at a time, session only.',
+                style: TextStyle(color: theme.colorScheme.onSurface.withValues(alpha: 0.6)),
               ),
             ),
           ],
         ),
-      ),
+        const SizedBox(height: 12),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: _palette.map((color) {
+            final selected = _textColor.value == color.value;
+            final borderColor = color.computeLuminance() > 0.65 ? Colors.black26 : Colors.white70;
+            return GestureDetector(
+              onTap: () => setState(() => _textColor = color),
+              child: Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: color,
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: selected ? borderColor : Colors.grey,
+                    width: selected ? 3 : 1,
+                  ),
+                  boxShadow: selected
+                      ? [
+                          BoxShadow(
+                            color: color.withValues(alpha: 0.5),
+                            blurRadius: 8,
+                          ),
+                        ]
+                      : const [],
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+        const SizedBox(height: 12),
+        OutlinedButton.icon(
+          onPressed: () async {
+            var tempColor = _textColor;
+            final accepted = await showDialog<bool>(
+              context: context,
+              builder: (context) {
+                return AlertDialog(
+                  title: const Text('Pick text color'),
+                  content: SingleChildScrollView(
+                    child: ColorPicker(
+                      pickerColor: tempColor,
+                      onColorChanged: (color) => tempColor = color,
+                      enableAlpha: false,
+                      displayThumbColor: true,
+                      labelTypes: const [],
+                      pickerAreaHeightPercent: 0.75,
+                    ),
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, false),
+                      child: const Text('Cancel'),
+                    ),
+                    FilledButton(
+                      onPressed: () => Navigator.pop(context, true),
+                      child: const Text('Apply'),
+                    ),
+                  ],
+                );
+              },
+            );
+            if (accepted == true && mounted) {
+              setState(() => _textColor = tempColor);
+            }
+          },
+          icon: const Icon(Icons.color_lens_outlined),
+          label: const Text('Custom Color Picker'),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Current: $_rgbText  $_hexText',
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+        const SizedBox(height: 16),
+        TextField(
+          controller: _previewTextController,
+          maxLength: 100,
+          minLines: 1,
+          maxLines: 4,
+          onChanged: (_) => setState(() {}),
+          decoration: const InputDecoration(
+            labelText: 'Preview text',
+            hintText: 'Type any text you want to preview',
+            border: OutlineInputBorder(),
+            alignLabelWithHint: true,
+          ),
+        ),
+        Text(
+          'Live preview, 0-100 characters. Changes here update the typography preview above immediately.',
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+      ],
     );
   }
 

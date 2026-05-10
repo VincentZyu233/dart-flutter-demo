@@ -145,13 +145,13 @@ class _Page3AdaptiveGridState extends State<Page3AdaptiveGrid> {
   }
 
   int _columnCount(double width) {
-    final base = width < 500
+    final base = width < 420
         ? 1
-        : width < 800
+        : width < 720
             ? 2
-            : width < 1100
+            : width < 1040
                 ? 3
-                : width < 1400
+                : width < 1440
                     ? 4
                     : 5;
     final target = switch (_densityMode) {
@@ -560,9 +560,7 @@ class _Page3AdaptiveGridState extends State<Page3AdaptiveGrid> {
         crossAxisCount: columns,
         crossAxisSpacing: _gap,
         mainAxisSpacing: _gap,
-        childAspectRatio: _densityMode == _DensityMode.five || _densityMode == _DensityMode.four
-            ? 1.15
-            : 1.0,
+        childAspectRatio: columns >= 4 ? 1.2 : 1.0,
       ),
       itemCount: items.length,
       itemBuilder: (context, index) => _RepositoryCard(
@@ -737,9 +735,7 @@ class _RepositoryCardState extends State<_RepositoryCard> {
                       repo.description?.isNotEmpty == true
                           ? repo.description!
                           : 'No description provided.',
-                      maxLines: widget.density == _DensityMode.five || widget.density == _DensityMode.four
-                          ? 3
-                          : 4,
+                      maxLines: widget.density == _DensityMode.one ? 4 : 3,
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 10),
@@ -827,9 +823,7 @@ class _RepositoryListTileState extends State<_RepositoryListTile> {
             ),
               subtitle: Text(
                 repo.description?.isNotEmpty == true ? repo.description! : 'No description provided.',
-                maxLines: widget.density == _DensityMode.five || widget.density == _DensityMode.four
-                    ? 2
-                    : 3,
+                maxLines: widget.density == _DensityMode.one || widget.density == _DensityMode.two ? 3 : 2,
                 overflow: TextOverflow.ellipsis,
               ),
             trailing: Wrap(
