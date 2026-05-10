@@ -28,6 +28,6 @@ if (-not $preferred) {
 
 Write-Output "UPTIME|$($os.LastBootUpTime)"
 Write-Output "CPU|$($cpu.Name) ($($cpu.NumberOfLogicalProcessors) cores)"
-Write-Output "MEM|$([math]::Round($cs.TotalPhysicalMemory/1GB,1)) GiB total"
+Write-Output "MEM|$([math]::Round((($os.TotalVisibleMemorySize - $os.FreePhysicalMemory) / 1024) / 1024, 1)) GiB / $([math]::Round(($os.TotalVisibleMemorySize / 1024) / 1024, 1)) GiB"
 Write-Output "DISK|$([math]::Round($disk.Size/1GB,1)) GiB total $([math]::Round(($disk.Size-$disk.FreeSpace)/1GB,1)) GiB used"
 Write-Output "NET|$($preferred.IPv4Address.IPAddress)"

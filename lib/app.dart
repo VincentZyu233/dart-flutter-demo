@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -7,6 +8,7 @@ import 'pages/page1_dialog_lab.dart';
 import 'pages/page2_typography_studio.dart';
 import 'pages/page3_adaptive_grid.dart';
 import 'pages/page4_controls_feedback.dart';
+import 'services/app_performance.dart';
 import 'widgets/animated_page.dart';
 
 final themeNotifier = ValueNotifier<ThemeMode>(ThemeMode.system);
@@ -72,6 +74,8 @@ class HomeShell extends StatefulWidget {
 class _HomeShellState extends State<HomeShell> {
   int _currentIndex = 0;
   Future<PackageInfo>? _packageInfoFuture;
+  final FrameFpsTracker _fpsTracker = FrameFpsTracker();
+  int _shellBuildCount = 0;
 
   static const _pages = [
     Page0SystemInfo(),
@@ -93,6 +97,13 @@ class _HomeShellState extends State<HomeShell> {
   void initState() {
     super.initState();
     _packageInfoFuture = PackageInfo.fromPlatform();
+    WidgetsBinding.instance.addTimingsCallback(_fpsTracker.addTimings);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeTimingsCallback(_fpsTracker.addTimings);
+    super.dispose();
   }
 
   @override
@@ -100,6 +111,10 @@ class _HomeShellState extends State<HomeShell> {
     if (_currentIndex >= _pages.length) {
       _currentIndex = _pages.length - 1;
     }
+    _shellBuildCount++;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      shellRebuildCountNotifier.value = _shellBuildCount;
+    });
     return ValueListenableBuilder<ThemeMode>(
       valueListenable: themeNotifier,
       builder: (context, themeMode, _) {
@@ -115,7 +130,14 @@ class _HomeShellState extends State<HomeShell> {
         };
         return Scaffold(
           appBar: AppBar(
-            title: Text(_titles[_currentIndex]),
+            title: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(_titles[_currentIndex]),
+                const SizedBox(width: 10),
+                _PerfChip(fpsTracker: _fpsTracker),
+              ],
+            ),
             actions: [
               IconButton(
                 tooltip: '$themeTooltip. Tap to switch.',
@@ -351,6 +373,48 @@ class _HomeShellState extends State<HomeShell> {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _PerfChip extends StatelessWidget {
+  final FrameFpsTracker fpsTracker;
+
+  const _PerfChip({required this.fpsTracker});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return AnimatedBuilder(
+      animation: Listenable.merge([
+        lastRefreshDurationNotifier,
+        shellRebuildCountNotifier,
+      ]),
+      builder: (context, _) {
+        final fps = fpsTracker.fps;
+        final refresh = lastRefreshDurationNotifier.value;
+        final rebuilds = shellRebuildCountNotifier.value;
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.55),
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(
+              color: theme.colorScheme.outlineVariant.withOpacity(0.5),
+            ),
+          ),
+          child: Text(
+            'FPS ${fps.toStringAsFixed(0)}  •  '
+            'Refresh ${refresh?.inMilliseconds ?? 0} ms  •  '
+            'Rebuild $rebuilds',
+            style: TextStyle(
+              fontSize: 10.5,
+              fontFamily: 'JetBrainsMono',
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        );
+      },
     );
   }
 }

@@ -260,7 +260,8 @@ class _WindowsSystemInfo implements SystemInfoService {
     }
 
     late final Future<Map<String, String>> future;
-    future = Future<Map<String, String>>(_getInfoSync).then((result) {
+    future = Future<Map<String, String>>(() async {
+      final result = await _getInfoAsync();
       _cachedInfo = Map<String, String>.from(result);
       return Map<String, String>.from(result);
     });
@@ -274,7 +275,7 @@ class _WindowsSystemInfo implements SystemInfoService {
     return future;
   }
 
-  static Map<String, String> _getInfoSync() {
+  static Future<Map<String, String>> _getInfoAsync() async {
     final debug = _DebugLogBuffer();
     debug.add('Windows system info request started.');
 
@@ -320,9 +321,9 @@ class _WindowsSystemInfo implements SystemInfoService {
 
     final state = _WindowsFallbackState(debug, result);
     debug.add('Entering fallback chain.');
-    _tryStandalonePs1(state);
-    _tryInlinePowerShell(state);
-    _tryNativeCommands(state);
+    await _tryStandalonePs1(state);
+    await _tryInlinePowerShell(state);
+    await _tryNativeCommands(state);
 
     _recordWindowsDebug(
       source: 'fallback',
@@ -345,7 +346,7 @@ class _WindowsSystemInfo implements SystemInfoService {
     );
   }
 
-  static void _tryStandalonePs1(_WindowsFallbackState state) {
+  static Future<void> _tryStandalonePs1(_WindowsFallbackState state) async {
     final ps1 = File(r'plugins\windows\SystemInfo.ps1');
     state.debug.add('Checking PS1 path: ${ps1.absolute.path}');
     if (!ps1.existsSync()) {
@@ -353,7 +354,7 @@ class _WindowsSystemInfo implements SystemInfoService {
       return;
     }
 
-    final trace = _runProcess(
+    final trace = await _runProcess(
       state.debug,
       'powershell',
       ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', ps1.absolute.path],
@@ -362,7 +363,7 @@ class _WindowsSystemInfo implements SystemInfoService {
     _ingestTaggedOutput(state, trace.stdout, source: 'ps1');
   }
 
-  static void _tryInlinePowerShell(_WindowsFallbackState state) {
+  static Future<void> _tryInlinePowerShell(_WindowsFallbackState state) async {
     final script = r'''
 $os = Get-CimInstance Win32_OperatingSystem
 $cs = Get-CimInstance Win32_ComputerSystem
@@ -382,11 +383,11 @@ $ip = Get-NetIPAddress -AddressFamily IPv4 -PrefixOrigin Dhcp,Manual |
   Select-Object -First 1
 Write-Output "UPTIME|$($os.LastBootUpTime)"
 Write-Output "CPU|$($cpu.Name) ($($cpu.NumberOfLogicalProcessors) cores)"
-Write-Output "MEM|$([math]::Round(($cs.TotalPhysicalMemory / 1GB), 2)) GiB total"
+Write-Output "MEM|$([math]::Round((($os.TotalVisibleMemorySize - $os.FreePhysicalMemory) / 1024) / 1024, 2)) GiB / $([math]::Round(($os.TotalVisibleMemorySize / 1024) / 1024, 2)) GiB"
 Write-Output "DISK|$([math]::Round(($disk.Size - $disk.FreeSpace) / 1GB, 2)) GiB / $([math]::Round($disk.Size / 1GB, 2)) GiB"
 Write-Output "NET|$($ip.IPAddress)"
 ''';
-    final trace = _runProcess(
+    final trace = await _runProcess(
       state.debug,
       'powershell',
       ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', script],
@@ -395,10 +396,10 @@ Write-Output "NET|$($ip.IPAddress)"
     _ingestTaggedOutput(state, trace.stdout, source: 'inline-powershell');
   }
 
-  static void _tryNativeCommands(_WindowsFallbackState state) {
+  static Future<void> _tryNativeCommands(_WindowsFallbackState state) async {
     state.debug.add('Trying native command fallbacks.');
 
-    final uptime = _runProcess(
+    final uptime = await _runProcess(
       state.debug,
       'cmd',
       ['/c', 'net stats workstation'],
@@ -406,13 +407,13 @@ Write-Output "NET|$($ip.IPAddress)"
     );
     state.putIfMissing('Uptime', _extractNetStatsUptime(uptime.stdout));
 
-    final cpuName = _runProcess(
+    final cpuName = await _runProcess(
       state.debug,
       'reg',
       ['query', r'HKLM\HARDWARE\DESCRIPTION\System\CentralProcessor\0', '/v', 'ProcessorNameString'],
       label: 'reg cpu name',
     );
-    final cpuSpeed = _runProcess(
+    final cpuSpeed = await _runProcess(
       state.debug,
       'reg',
       ['query', r'HKLM\HARDWARE\DESCRIPTION\System\CentralProcessor\0', '/v', '~MHz'],
@@ -421,7 +422,7 @@ Write-Output "NET|$($ip.IPAddress)"
     final cpuValue = _mergeCpuFallback(cpuName.stdout, cpuSpeed.stdout);
     state.putIfMissing('CPU', cpuValue);
 
-    final memory = _runProcess(
+    final memory = await _runProcess(
       state.debug,
       'wmic',
       ['OS', 'get', 'FreePhysicalMemory,TotalVisibleMemorySize', '/Value'],
@@ -429,7 +430,7 @@ Write-Output "NET|$($ip.IPAddress)"
     );
     state.putIfMissing('Memory', _extractWmicMemory(memory.stdout));
 
-    final disk = _runProcess(
+    final disk = await _runProcess(
       state.debug,
       'wmic',
       ['logicaldisk', 'where', "DeviceID='C:'", 'get', 'FreeSpace,Size', '/Value'],
@@ -437,7 +438,7 @@ Write-Output "NET|$($ip.IPAddress)"
     );
     state.putIfMissing('Disk (C:\\)', _extractWmicDisk(disk.stdout));
 
-    final ip = _runProcess(
+    final ip = await _runProcess(
       state.debug,
       'ipconfig',
       [],
@@ -494,14 +495,14 @@ Write-Output "NET|$($ip.IPAddress)"
     }
   }
 
-  static _ProcessTrace _runProcess(
+  static Future<_ProcessTrace> _runProcess(
     _DebugLogBuffer debug,
     String executable,
     List<String> arguments, {
     required String label,
-  }) {
+  }) async {
     try {
-      final result = Process.runSync(executable, arguments, runInShell: true);
+      final result = await Process.run(executable, arguments, runInShell: true);
       final stdout = result.stdout.toString();
       final stderr = result.stderr.toString();
       debug.add('$label exitCode=${result.exitCode}');
@@ -529,7 +530,11 @@ Write-Output "NET|$($ip.IPAddress)"
       final trimmed = line.trim();
       if (trimmed.startsWith('Statistics since')) {
         final raw = trimmed.substring('Statistics since'.length).trim();
-        return raw.isEmpty ? null : raw;
+        if (raw.isEmpty) return null;
+        final boot = DateTime.tryParse(raw);
+        return boot != null
+            ? _formatDuration(DateTime.now().toUtc().difference(boot))
+            : raw;
       }
     }
     return null;
@@ -705,9 +710,11 @@ Write-Output "NET|$($ip.IPAddress)"
     final days = d.inDays;
     final hours = d.inHours % 24;
     final mins = d.inMinutes % 60;
+    final secs = d.inSeconds % 60;
     final buf = StringBuffer();
     if (days > 0) buf.write('$days days, ');
     buf.write('$hours hours, $mins mins');
+    buf.write(', $secs secs');
     return buf.toString();
   }
 

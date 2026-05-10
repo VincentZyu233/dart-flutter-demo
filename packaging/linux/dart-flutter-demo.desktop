@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Dart + Flutter Demo
+Comment=A cross-platform Flutter UI showcase PoC app
+Exec=dart_flutter_demo
+Icon=dart-flutter-demo
+Terminal=false
+Categories=Development;Utility;
