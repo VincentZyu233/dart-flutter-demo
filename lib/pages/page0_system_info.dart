@@ -25,17 +25,22 @@ class _Page0SystemInfoState extends State<Page0SystemInfo> {
   final Stopwatch _loadStopwatch = Stopwatch();
   int? _loadDurationMs;
 
-  static const List<String> _keys = [
-    'OS',
-    'Host',
-    'Kernel',
-    'Uptime',
-    'CPU',
-    'Memory',
-    'Disk (C:\\)',
-    'Local IP',
-    'Locale',
-  ];
+  List<String> get _keys => [
+        'OS',
+        'Host',
+        'Kernel',
+        'Uptime',
+        'CPU',
+        'Memory',
+        if (Platform.isWindows)
+          'Disk (C:\\)'
+        else if (Platform.isLinux)
+          'Disk (/)' 
+        else
+          'Disk',
+        'Local IP',
+        'Locale',
+      ];
 
   @override
   void initState() {

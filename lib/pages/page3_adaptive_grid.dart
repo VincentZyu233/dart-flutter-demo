@@ -194,20 +194,22 @@ class _Page3AdaptiveGridState extends State<Page3AdaptiveGrid> {
           final columns = _columnCount(width);
           final filtered = _filteredRepositories;
 
-          return Column(
-            children: [
-              _buildControls(theme),
-              const SizedBox(height: 10),
-              _buildStateBar(theme, width, columns, filtered.length),
-              const SizedBox(height: 10),
-              if (_error != null) _buildErrorBanner(theme),
-              const SizedBox(height: 10),
-              Expanded(
-                child: AnimatedSwitcher(
+          return SingleChildScrollView(
+            padding: const EdgeInsets.only(bottom: 24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _buildControls(theme),
+                const SizedBox(height: 10),
+                _buildStateBar(theme, width, columns, filtered.length),
+                const SizedBox(height: 10),
+                if (_error != null) _buildErrorBanner(theme),
+                const SizedBox(height: 10),
+                AnimatedSwitcher(
                   duration: const Duration(milliseconds: 220),
                   child: _loading
                       ? _buildLoadingState(key: const ValueKey('loading'))
-                          : filtered.isEmpty
+                      : filtered.isEmpty
                           ? _buildEmptyState(key: const ValueKey('empty'))
                           : switch (_layoutMode) {
                               _LayoutMode.grid => _buildGrid(filtered, columns, key: const ValueKey('grid')),
@@ -215,8 +217,8 @@ class _Page3AdaptiveGridState extends State<Page3AdaptiveGrid> {
                               _LayoutMode.list => _buildList(filtered, key: const ValueKey('list')),
                             },
                 ),
-              ),
-            ],
+              ],
+            ),
           );
         },
       ),
@@ -586,6 +588,8 @@ class _Page3AdaptiveGridState extends State<Page3AdaptiveGrid> {
   Widget _buildGrid(List<GitHubRepositoryItem> items, int columns, {Key? key}) {
     return GridView.builder(
       key: key,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
       padding: EdgeInsets.all(_gap),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: columns,
@@ -611,7 +615,7 @@ class _Page3AdaptiveGridState extends State<Page3AdaptiveGrid> {
       buckets[i % columns].add(items[i]);
     }
 
-    return SingleChildScrollView(
+    return Padding(
       key: key,
       padding: EdgeInsets.all(_gap),
       child: Row(
@@ -646,6 +650,8 @@ class _Page3AdaptiveGridState extends State<Page3AdaptiveGrid> {
   Widget _buildList(List<GitHubRepositoryItem> items, {Key? key}) {
     return ListView.separated(
       key: key,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
       padding: EdgeInsets.all(_gap),
       itemCount: items.length,
       separatorBuilder: (_, __) => SizedBox(height: _gap),

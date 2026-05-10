@@ -93,9 +93,44 @@ class SystemInfoPlugin : FlutterPlugin, MethodCallHandler {
                     }
                 }
             }
-            "$model ($cores)"
+            val socModel = getSocModel()
+            val displayModel = when {
+                model != "Unknown CPU" && model.isNotBlank() -> model
+                !socModel.isNullOrBlank() -> socModel
+                else -> "Unknown CPU"
+            }
+            "$displayModel ($cores)"
         } catch (e: Exception) {
-            "${Runtime.getRuntime().availableProcessors()} cores"
+            val socModel = getSocModel()
+            if (!socModel.isNullOrBlank()) {
+                "$socModel (${Runtime.getRuntime().availableProcessors()} cores)"
+            } else {
+                "${Runtime.getRuntime().availableProcessors()} cores"
+            }
+        }
+    }
+
+    private fun getSocModel(): String? {
+        return try {
+            when {
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.S ->
+                    Build.SOC_MODEL?.takeIf { it.isNotBlank() }
+                else -> null
+            } ?: getSystemProperty("ro.soc.model")
+                ?: getSystemProperty("ro.board.platform")
+                ?: getSystemProperty("ro.hardware")
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    private fun getSystemProperty(name: String): String? {
+        return try {
+            val clz = Class.forName("android.os.SystemProperties")
+            val method = clz.getDeclaredMethod("get", String::class.java)
+            (method.invoke(null, name) as? String)?.takeIf { it.isNotBlank() }
+        } catch (_: Exception) {
+            null
         }
     }
 
