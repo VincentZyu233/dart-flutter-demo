@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/scheduler.dart';
 
 final ValueNotifier<int> shellRebuildCountNotifier = ValueNotifier<int>(0);
+final ValueNotifier<double> frameFpsNotifier = ValueNotifier<double>(0);
 
 class FrameFpsTracker {
   final List<int> _frameTimestampsMicros = [];
@@ -22,8 +23,10 @@ class FrameFpsTracker {
     _frameTimestampsMicros.removeWhere((value) => value < cutoff);
     if (_frameTimestampsMicros.isEmpty) {
       _fps = 0;
+      frameFpsNotifier.value = _fps;
       return;
     }
     _fps = _frameTimestampsMicros.length.toDouble();
+    frameFpsNotifier.value = _fps;
   }
 }

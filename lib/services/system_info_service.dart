@@ -380,8 +380,7 @@ class _WindowsSystemInfo implements SystemInfoService {
     debug.add('Windows system info request started.');
 
     try {
-      debug.add('Trying FFI via DynamicLibrary.process().');
-      final dylib = DynamicLibrary.process();
+      final dylib = _openWindowsFfiLibrary(debug);
       final getJson = dylib.lookupFunction<_GetSystemInfoJsonNative, _GetSystemInfoJsonDart>(
         'GetSystemInfoJson',
       );
@@ -428,6 +427,15 @@ class _WindowsSystemInfo implements SystemInfoService {
     }
     debug.add('Entering fallback chain.');
     await _tryNativeCommands(state);
+    if (_needsSlowWindowsFallback(state.result)) {
+      debug.add(
+        'Fast fallback left gaps in Windows fields. Trying slower fallbacks for missing values.',
+      );
+      await _tryStandalonePs1(state);
+      if (_needsSlowWindowsFallback(state.result)) {
+        await _tryInlinePowerShell(state);
+      }
+    }
     /*
     Historical slow-path fallbacks kept for reference:
     Uncomment only if the faster native chain stops working on some build.
@@ -453,6 +461,37 @@ class _WindowsSystemInfo implements SystemInfoService {
       source: source,
       logs: logs,
       data: Map<String, String>.from(data),
+    );
+  }
+
+  static DynamicLibrary _openWindowsFfiLibrary(_DebugLogBuffer debug) {
+    final attempts = <String>[];
+
+    try {
+      debug.add('Trying FFI via DynamicLibrary.process().');
+      return DynamicLibrary.process();
+    } catch (e) {
+      attempts.add('process(): $e');
+    }
+
+    final executablePath = Platform.resolvedExecutable;
+    try {
+      debug.add('Trying FFI via resolved executable: $executablePath');
+      return DynamicLibrary.open(executablePath);
+    } catch (e) {
+      attempts.add('resolvedExecutable: $e');
+    }
+
+    final exeName = executablePath.split(Platform.pathSeparator).last;
+    try {
+      debug.add('Trying FFI via executable filename: $exeName');
+      return DynamicLibrary.open(exeName);
+    } catch (e) {
+      attempts.add('exeName: $e');
+    }
+
+    throw ArgumentError(
+      'Failed to load Windows FFI library. Attempts: ${attempts.join(' | ')}',
     );
   }
 
@@ -841,6 +880,26 @@ Write-Output "NET|$($ip.IPAddress)"
     final trimmed = raw.trim();
     if (trimmed.isEmpty) return null;
 
+    final slashYearFirstMatch = RegExp(
+      r'^(\d{4})/(\d{1,2})/(\d{1,2})\s+(\d{1,2}):(\d{2}):(\d{2})$',
+    ).firstMatch(trimmed);
+    if (slashYearFirstMatch != null) {
+      final year = int.tryParse(slashYearFirstMatch.group(1)!);
+      final month = int.tryParse(slashYearFirstMatch.group(2)!);
+      final day = int.tryParse(slashYearFirstMatch.group(3)!);
+      final hour = int.tryParse(slashYearFirstMatch.group(4)!);
+      final minute = int.tryParse(slashYearFirstMatch.group(5)!);
+      final second = int.tryParse(slashYearFirstMatch.group(6)!);
+      if (month != null &&
+          day != null &&
+          year != null &&
+          hour != null &&
+          minute != null &&
+          second != null) {
+        return DateTime(year, month, day, hour, minute, second);
+      }
+    }
+
     final slashMatch = RegExp(
       r'^(\d{1,2})/(\d{1,2})/(\d{4})\s+(\d{1,2}):(\d{2}):(\d{2})$',
     ).firstMatch(trimmed);
@@ -878,6 +937,17 @@ Write-Output "NET|$($ip.IPAddress)"
     final normalized = value.replaceAll('\r\n', '\n').trim();
     if (normalized.length <= maxChars) return normalized;
     return '${normalized.substring(0, maxChars)}\n...<truncated>';
+  }
+
+  static bool _needsSlowWindowsFallback(Map<String, String> result) {
+    const keys = ['Uptime', 'Memory', 'Disk (C:\\)', 'Local IP'];
+    for (final key in keys) {
+      final value = result[key]?.trim() ?? '';
+      if (value.isEmpty || value == 'unknown' || value == 'unavailable') {
+        return true;
+      }
+    }
+    return false;
   }
 }
 

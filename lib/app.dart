@@ -387,10 +387,11 @@ class _PerfChip extends StatelessWidget {
     final theme = Theme.of(context);
     return AnimatedBuilder(
       animation: Listenable.merge([
+        frameFpsNotifier,
         shellRebuildCountNotifier,
       ]),
       builder: (context, _) {
-        final fps = fpsTracker.fps;
+        final fps = frameFpsNotifier.value;
         final rebuilds = shellRebuildCountNotifier.value;
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
