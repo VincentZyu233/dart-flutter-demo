@@ -28,7 +28,7 @@ class _Page3AdaptiveGridState extends State<Page3AdaptiveGrid> {
   final _proxyController = TextEditingController(text: 'http://127.0.0.1:7890');
   final List<TextEditingController> _sourceControllers = [];
 
-  _LayoutMode _layoutMode = _LayoutMode.grid;
+  _LayoutMode _layoutMode = _LayoutMode.masonry;
   _DensityMode _densityMode = _DensityMode.three;
   _SortMode _sortMode = _SortMode.updated;
   bool _useProxy = false;
@@ -560,7 +560,7 @@ class _Page3AdaptiveGridState extends State<Page3AdaptiveGrid> {
         crossAxisCount: columns,
         crossAxisSpacing: _gap,
         mainAxisSpacing: _gap,
-        childAspectRatio: columns >= 4 ? 1.2 : 1.0,
+        childAspectRatio: columns >= 4 ? 2.9 : 2.5,
       ),
       itemCount: items.length,
       itemBuilder: (context, index) => _RepositoryCard(

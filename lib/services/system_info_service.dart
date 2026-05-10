@@ -311,7 +311,7 @@ class _WindowsSystemInfo implements SystemInfoService {
       'Host': Platform.localHostname,
       'Kernel': 'Windows ${Platform.operatingSystemVersion}',
       'Uptime': 'unavailable',
-      'CPU': '${Platform.numberOfProcessors} cores',
+      'CPU': 'unavailable',
       'Memory': 'unavailable',
       'Disk (C:\\)': 'unavailable',
       'Local IP': 'unavailable',

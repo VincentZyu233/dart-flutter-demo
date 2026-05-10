@@ -2,7 +2,7 @@
 
 # dart_flutter_demo
 
-A cross-platform Flutter UI showcase PoC (Proof of Concept) app for Android, Windows, Linux, macOS, and iOS CI packaging.
+A cross-platform Flutter UI showcase PoC (Proof of Concept) app, available on Android, Windows, Linux, macOS, and iOS, build by Github Action CI packaging workflow.
 
 ## Pages
 
@@ -36,20 +36,6 @@ A compact lab for interactive controls and user feedback. Includes radios, check
 Source: [lib/pages/page4_controls_feedback.dart](https://github.com/VincentZyu233/dart-flutter-demo/blob/main/lib/pages/page4_controls_feedback.dart)
 ![page4](doc/preview-pics/page4.png)
 
-## Build & Run
-
-```bash
-# Install dependencies
-flutter pub get
-
-# Run in debug mode
-flutter run
-
-# Release builds
-flutter build windows --release
-flutter build linux --release
-flutter build apk --release
-```
 
 ## CI/CD
 
@@ -57,8 +43,11 @@ GitHub Actions handles automated builds and packaging. Push a commit containing 
 
 ## Tech Stack
 
-- Flutter (stable channel)
-- Material 3 design system
-- Google Fonts plugin
-- file_selector + flutter_colorpicker plugins
-- State management: setState (kept intentionally simple for a PoC)
+| Item | Badge |
+|------|-------|
+| Flutter | ![flutter](https://img.shields.io/badge/Flutter-stable-02569B.svg?logo=flutter) |
+| Material 3 | ![material3](https://img.shields.io/badge/Material%203-design%20system-6750A4.svg?logo=materialdesign) |
+| Fonts | ![google-fonts](https://img.shields.io/badge/Google%20Fonts-plugin-4285F4.svg?logo=googlefonts) |
+| Plugins | ![plugins](https://img.shields.io/badge/file__selector%20%2B%20flutter__colorpicker-plugins-00A884.svg?logo=flutter) |
+| App Info | ![package-info-plus](https://img.shields.io/badge/package__info__plus-app%20metadata-FF6F00.svg?logo=dart) |
+| Links | ![url-launcher](https://img.shields.io/badge/url__launcher-open%20links-1E88E5.svg?logo=linktree) |
