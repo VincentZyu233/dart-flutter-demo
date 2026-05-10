@@ -48,6 +48,11 @@
 
 GitHub Actions 负责自动构建与打包。提交信息包含 `build action` 或 `build release` 即可触发流水线。详见 [build.zh-cn.md](.github/workflows/build.zh-cn.md)。
 
+## 故障排除
+
+- **Linux / Windows GPU问题**：使用软件渲染启动：`./dart_flutter_demo --disable-gpu`
+- **macOS 虚拟机 图形问题**（VMware、VirtualBox 等）：Flutter 桌面应用依赖 Apple Metal，虚拟机无法提供 Metal 支持，因此无法运行。请使用物理 Mac 或 GitHub Actions macOS 运行器。
+
 ## 技术栈
 
 | 项目 | Badge |

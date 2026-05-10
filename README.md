@@ -48,6 +48,11 @@ Source: [lib/pages/page4_controls_feedback.dart](https://github.com/VincentZyu23
 
 GitHub Actions handles automated builds and packaging. Push a commit containing `build action` or `build release` to trigger the pipeline. See [build.md](.github/workflows/build.md) for details.
 
+## Troubleshooting
+
+- **Linux / Windows GPU issues**: Launch with software rendering: `./dart_flutter_demo --disable-gpu`
+- **macOS virtual machines graphic issues** (VMware, VirtualBox, etc.): Flutter desktop apps require Apple Metal, which is unavailable in VMs. Use a physical Mac or GitHub Actions macOS runners instead.
+
 ## Tech Stack
 
 | Item | Badge |

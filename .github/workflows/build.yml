@@ -309,7 +309,7 @@ jobs:
 
       - name: Build (macOS)
         if: matrix.platform == 'macos-x64' || matrix.platform == 'macos-arm64'
-        run: flutter build macos --release --no-enable-impeller
+        run: flutter build macos --release
 
       - name: Patch macOS for SystemInfo plugin
         if: matrix.platform == 'macos-x64' || matrix.platform == 'macos-arm64'
@@ -514,7 +514,7 @@ jobs:
           for variant in linux-x64; do
             find "artifacts/${variant}-packages" -type f | while read f; do
               ext="${f##*.}"
-              cp "$f" "artifacts/${variant}-v${VERSION}.${ext}"
+              cp "$f" "artifacts/dart-flutter-demo-showcase-${variant}-v${VERSION}.${ext}"
             done
           done
 
