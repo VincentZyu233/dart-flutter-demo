@@ -7,29 +7,30 @@ final ValueNotifier<Duration?> lastRefreshDurationNotifier =
 final ValueNotifier<int> shellRebuildCountNotifier = ValueNotifier<int>(0);
 
 class FrameFpsTracker {
-  final List<int> _frameEndMicros = [];
+  final List<int> _frameTimestampsMicros = [];
   double _fps = 0;
 
   double get fps => _fps;
 
   void addTimings(List<FrameTiming> timings) {
+    final nowMicros = DateTime.now().microsecondsSinceEpoch;
     for (final timing in timings) {
-      _frameEndMicros.add(
-        timing.timestampInMicroseconds(FramePhase.rasterFinish),
+      _frameTimestampsMicros.add(
+        timing.totalSpan.inMicroseconds > 0
+            ? nowMicros
+            : nowMicros,
       );
     }
-    if (_frameEndMicros.length > 90) {
-      _frameEndMicros.removeRange(0, _frameEndMicros.length - 90);
+    if (_frameTimestampsMicros.length > 180) {
+      _frameTimestampsMicros
+          .removeRange(0, _frameTimestampsMicros.length - 180);
     }
-    if (_frameEndMicros.length < 2) {
+    final cutoff = nowMicros - const Duration(seconds: 1).inMicroseconds;
+    _frameTimestampsMicros.removeWhere((value) => value < cutoff);
+    if (_frameTimestampsMicros.isEmpty) {
       _fps = 0;
       return;
     }
-    final spanMicros = _frameEndMicros.last - _frameEndMicros.first;
-    if (spanMicros <= 0) {
-      _fps = 0;
-      return;
-    }
-    _fps = (_frameEndMicros.length - 1) * 1000000 / spanMicros;
+    _fps = _frameTimestampsMicros.length.toDouble();
   }
 }

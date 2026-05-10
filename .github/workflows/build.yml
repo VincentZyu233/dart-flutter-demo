@@ -67,7 +67,7 @@ jobs:
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 
-  # Stage 2: Matrix build (Windows x64, Linux x64, Android APK, iOS IPA)
+  # Stage 2: Matrix build (Windows x64, Linux x64, Android APK, iOS ARM64 IPA)
   build:
     needs: check-commit
     if: needs.check-commit.outputs.should_build == 'true'
@@ -100,7 +100,7 @@ jobs:
             os: macos-latest
             artifact_name: dart-flutter-demo-showcase-macos-arm64
             artifact_path: build/macos/Build/Products/Release/
-          - platform: ios
+          - platform: ios-arm64
             os: macos-latest
             artifact_name: dart-flutter-demo-showcase-ios
             artifact_path: build/ios/ipa/
@@ -139,7 +139,7 @@ jobs:
               mkdir -p android/app/src/main/kotlin/com/example/dart_flutter_demo
               cp plugins/android/SystemInfoPlugin.kt android/app/src/main/kotlin/com/example/dart_flutter_demo/
               ;;
-            ios)
+            ios-arm64)
               mkdir -p ios/Runner
               cp plugins/ios/SystemInfoPlugin.swift ios/Runner/
               ;;
@@ -348,7 +348,7 @@ jobs:
           echo "✓ Android APK outputs verified"
 
       - name: Patch iOS for SystemInfo plugin
-        if: matrix.platform == 'ios'
+        if: matrix.platform == 'ios-arm64'
         shell: bash
         run: |
           # Register plugin in AppDelegate.swift
@@ -362,20 +362,40 @@ jobs:
           with open('ios/Runner/AppDelegate.swift', 'w') as f:
               f.write(swift)
           "
-          # Override code signing via xcconfig (more reliable than sed on pbxproj)
+          # Force unsigned build settings in Xcode project and xcconfig.
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          pbxproj = Path('ios/Runner.xcodeproj/project.pbxproj')
+          text = pbxproj.read_text(encoding='utf-8')
+          replacements = [
+              (r'CODE_SIGN_STYLE = Automatic;', 'CODE_SIGN_STYLE = Manual;'),
+              (r'CODE_SIGN_STYLE = Apple Development;', 'CODE_SIGN_STYLE = Manual;'),
+              (r'CODE_SIGNING_ALLOWED = YES;', 'CODE_SIGNING_ALLOWED = NO;'),
+              (r'CODE_SIGNING_REQUIRED = YES;', 'CODE_SIGNING_REQUIRED = NO;'),
+              (r'DEVELOPMENT_TEAM = [^;]*;', 'DEVELOPMENT_TEAM = "";'),
+              (r'PROVISIONING_PROFILE_SPECIFIER = [^;]*;', 'PROVISIONING_PROFILE_SPECIFIER = "";'),
+          ]
+          for pattern, replacement in replacements:
+              text = re.sub(pattern, replacement, text)
+          pbxproj.write_text(text, encoding='utf-8')
+          PY
           cat > ios/Flutter/Release.xcconfig << 'XCEOF'
           #include "Pods/Target Support Files/Pods-Runner/Pods-Runner.release.xcconfig"
           #include "Generated.xcconfig"
           CODE_SIGN_IDENTITY=
           CODE_SIGNING_REQUIRED=NO
           CODE_SIGNING_ALLOWED=NO
+          CODE_SIGN_STYLE=Manual
           DEVELOPMENT_TEAM=
           PROVISIONING_PROFILE_SPECIFIER=
           XCEOF
           echo "=== Patched AppDelegate.swift ===" && head -5 ios/Runner/AppDelegate.swift
+          echo "=== Patched Xcode signing settings ===" && rg -n "CODE_SIGN_STYLE|CODE_SIGNING_ALLOWED|CODE_SIGNING_REQUIRED|DEVELOPMENT_TEAM|PROVISIONING_PROFILE_SPECIFIER" ios/Runner.xcodeproj/project.pbxproj ios/Flutter/Release.xcconfig
 
       - name: Build (iOS IPA - no codesign)
-        if: matrix.platform == 'ios'
+        if: matrix.platform == 'ios-arm64'
         run: |
           # Build Flutter app without codesign
           flutter build ios --release --no-codesign
@@ -431,7 +451,7 @@ jobs:
           retention-days: 7
 
       - name: Upload iOS artifact
-        if: matrix.platform == 'ios'
+        if: matrix.platform == 'ios-arm64'
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact_name }}
