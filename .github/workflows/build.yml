@@ -400,20 +400,23 @@ jobs:
           VERSION="${{ needs.check-commit.outputs.version }}"
           REPO="${{ github.repository }}"
           BASE_URL="https://github.com/${REPO}/releases/download/v${VERSION}"
-          COMMIT_LOG="${{ needs.check-commit.outputs.commits_log }}"
           BUILD_INFO=$(cat <<EOF
           ### Build Info
-          - Triggered by: \`${{ github.event.head_commit.message }}\`
           - Commit: \`${{ github.sha }}\`
+          - Commit time: \`${{ github.event.head_commit.timestamp }}\`
           EOF
           )
+          cat <<'EOF' > commit_log.txt
+${{ needs.check-commit.outputs.commits_log }}
+EOF
 
-          python3 - "$REPO" "$VERSION" "$BASE_URL" "$BUILD_INFO" "$COMMIT_LOG" <<'PY'
+          python3 - "$REPO" "$VERSION" "$BASE_URL" "$BUILD_INFO" commit_log.txt <<'PY'
           import pathlib
           import sys
 
-          repo, version, base_url, build_info, commit_log = sys.argv[1:6]
+          repo, version, base_url, build_info, commit_log_path = sys.argv[1:6]
           template = pathlib.Path('.github/release_template.md').read_text(encoding='utf-8')
+          commit_log = pathlib.Path(commit_log_path).read_text(encoding='utf-8').strip()
           body = (
               template
               .replace('__REPO__', repo)

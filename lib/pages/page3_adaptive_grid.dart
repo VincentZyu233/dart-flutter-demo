@@ -33,6 +33,7 @@ class _Page3AdaptiveGridState extends State<Page3AdaptiveGrid> {
   _SortMode _sortMode = _SortMode.updated;
   bool _useProxy = false;
   bool _controlsExpanded = false;
+  bool _autoColumns = true;
 
   bool _loading = false;
   String? _error;
@@ -145,7 +146,7 @@ class _Page3AdaptiveGridState extends State<Page3AdaptiveGrid> {
   }
 
   int _columnCount(double width) {
-    final base = width < 420
+    final autoBase = width < 420
         ? 1
         : width < 720
             ? 2
@@ -161,7 +162,7 @@ class _Page3AdaptiveGridState extends State<Page3AdaptiveGrid> {
       _DensityMode.two => 2,
       _DensityMode.one => 1,
     };
-    return math.min(base, target);
+    return _autoColumns ? autoBase : target;
   }
 
   double get _gap => switch (_densityMode) {
@@ -288,6 +289,26 @@ class _Page3AdaptiveGridState extends State<Page3AdaptiveGrid> {
               runSpacing: 8,
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
+                Padding(
+                  padding: const EdgeInsets.only(right: 4),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Adjust Columns',
+                        style: theme.textTheme.labelLarge?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      Text(
+                        'Manual target columns',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
                 SegmentedButton<_LayoutMode>(
                   segments: const [
                     ButtonSegment(value: _LayoutMode.grid, label: Text('Grid'), icon: Icon(Icons.grid_view_rounded)),
@@ -327,6 +348,17 @@ class _Page3AdaptiveGridState extends State<Page3AdaptiveGrid> {
                     if (value == null) return;
                     setState(() => _sortMode = value);
                   },
+                ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Switch(
+                      value: _autoColumns,
+                      onChanged: (value) => setState(() => _autoColumns = value),
+                    ),
+                    const SizedBox(width: 6),
+                    const Text('Auto columns'),
+                  ],
                 ),
                 SizedBox(
                   width: 220,
@@ -496,20 +528,19 @@ class _Page3AdaptiveGridState extends State<Page3AdaptiveGrid> {
         spacing: 16,
         runSpacing: 8,
         children: [
-          Text('Columns: $columns'),
+          Text('Current columns: $columns'),
           Text('Gap: ${_gap.toStringAsFixed(0)}'),
           Text('Width: ${width.round()}px'),
           Text('Range: ${_widthBucket(width)}'),
           Text('Layout: ${_layoutMode.name}'),
-          Text(
-            'Density: ${switch (_densityMode) {
-              _DensityMode.five => 'target 5 columns',
-              _DensityMode.four => 'target 4 columns',
-              _DensityMode.three => 'target 3 columns',
-              _DensityMode.two => 'target 2 columns',
-              _DensityMode.one => 'target 1 column',
-            }}',
-          ),
+          Text(_autoColumns ? 'Adaptive columns: on' : 'Adaptive columns: off'),
+          Text('Target columns: ${switch (_densityMode) {
+            _DensityMode.five => 5,
+            _DensityMode.four => 4,
+            _DensityMode.three => 3,
+            _DensityMode.two => 2,
+            _DensityMode.one => 1,
+          }}'),
           Text('Repos: $count'),
           Text(_status),
         ],
