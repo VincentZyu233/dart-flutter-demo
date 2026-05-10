@@ -407,8 +407,8 @@ jobs:
           EOF
           )
           cat <<'EOF' > commit_log.txt
-${{ needs.check-commit.outputs.commits_log }}
-EOF
+          ${{ needs.check-commit.outputs.commits_log }}
+          EOF
 
           python3 - "$REPO" "$VERSION" "$BASE_URL" "$BUILD_INFO" commit_log.txt <<'PY'
           import pathlib
