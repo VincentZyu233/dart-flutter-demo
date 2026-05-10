@@ -154,6 +154,71 @@ jobs:
             esac
             echo "✓ Copied plugins/${{ matrix.platform }} to platform directory"
 
+      - name: Patch macOS project for SystemInfo plugin
+        if: matrix.platform == 'macos-x64' || matrix.platform == 'macos-arm64'
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          import uuid
+
+          pbxproj = Path('macos/Runner.xcodeproj/project.pbxproj')
+          text = pbxproj.read_text(encoding='utf-8')
+          if 'SystemInfoPlugin.swift' in text:
+              pbxproj.write_text(text, encoding='utf-8')
+              raise SystemExit(0)
+
+          file_id = uuid.uuid4().hex[:24].upper()
+          build_id = uuid.uuid4().hex[:24].upper()
+
+          file_ref = (
+              f'{file_id} /* SystemInfoPlugin.swift */ = '
+              '{{isa = PBXFileReference; lastKnownFileType = sourcecode.swift; '
+              'path = SystemInfoPlugin.swift; sourceTree = "<group>"; }};'
+          )
+          build_file = (
+              f'{build_id} /* SystemInfoPlugin.swift in Sources */ = '
+              f'{{isa = PBXBuildFile; fileRef = {file_id} /* SystemInfoPlugin.swift */; }};'
+          )
+
+          text, count = re.subn(
+              r'(^\s*[A-F0-9]{24} /\* AppDelegate\.swift in Sources \*/ = '
+              r'\{isa = PBXBuildFile; fileRef = [A-F0-9]{24} /\* AppDelegate\.swift \*/; \};\n)',
+              rf'\1\t\t{build_file}\n',
+              text,
+              count=1,
+              flags=re.M,
+          )
+          if count != 1:
+              raise SystemExit('Failed to inject macOS build file reference.')
+
+          text, count = re.subn(
+              r'(^\s*[A-F0-9]{24} /\* AppDelegate\.swift \*/ = '
+              r'\{isa = PBXFileReference; lastKnownFileType = sourcecode\.swift; '
+              r'path = AppDelegate\.swift; sourceTree = "<group>"; \};\n)',
+              rf'\1\t\t{file_ref}\n',
+              text,
+              count=1,
+              flags=re.M,
+          )
+          if count != 1:
+              raise SystemExit('Failed to inject macOS file reference.')
+
+          text, count = re.subn(
+              r'(^\s*[A-F0-9]{24} /\* AppDelegate\.swift in Sources \*/,\n)',
+              rf'\1\t\t\t\t{build_id} /* SystemInfoPlugin.swift in Sources */,\n',
+              text,
+              count=1,
+              flags=re.M,
+          )
+          if count != 1:
+              raise SystemExit('Failed to inject macOS sources build phase entry.')
+
+          pbxproj.write_text(text, encoding='utf-8')
+          PY
+          echo "=== Patched macOS project.pbxproj for SystemInfoPlugin.swift ==="
+
       - name: Patch Windows runner for SystemInfo plugin
         if: matrix.platform == 'windows-x64'
         shell: bash
@@ -307,10 +372,6 @@ jobs:
           echo "=== Linux packages ==="
           ls -lah "$OUT/"
 
-      - name: Build (macOS)
-        if: matrix.platform == 'macos-x64' || matrix.platform == 'macos-arm64'
-        run: flutter build macos --release
-
       - name: Patch macOS for SystemInfo plugin
         if: matrix.platform == 'macos-x64' || matrix.platform == 'macos-arm64'
         shell: bash
@@ -327,6 +388,10 @@ jobs:
               f.write(swift)
           "
           echo "=== Patched macOS AppDelegate.swift ===" && head -5 macos/Runner/AppDelegate.swift
+
+      - name: Build (macOS)
+        if: matrix.platform == 'macos-x64' || matrix.platform == 'macos-arm64'
+        run: flutter build macos --release
 
       - name: Package macOS DMG
         if: matrix.platform == 'macos-x64' || matrix.platform == 'macos-arm64'
@@ -512,7 +577,7 @@ jobs:
 
           # Linux packages (deb/rpm/AppImage)
           for variant in linux-x64; do
-            find "artifacts/${variant}-packages" -type f | while read f; do
+            find "artifacts/dart-flutter-demo-showcase-${variant}-packages" -type f | while read f; do
               ext="${f##*.}"
               cp "$f" "artifacts/dart-flutter-demo-showcase-${variant}-v${VERSION}.${ext}"
             done

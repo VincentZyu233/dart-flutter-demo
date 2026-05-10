@@ -280,17 +280,20 @@ class _MacOSSystemInfo implements SystemInfoService {
     try {
       final result = await _channel.invokeMapMethod<String, String>('getInfo');
       if (result != null) {
-        _cachedInfo = Map<String, String>.from(result);
-        for (final entry in result.entries) {
+        final fallback = _getInfoFallback();
+        final merged = Map<String, String>.from(fallback);
+        merged.addAll(result);
+        _cachedInfo = Map<String, String>.from(merged);
+        for (final entry in merged.entries) {
           onField?.call(entry.key, entry.value);
         }
         _debugSnapshot = SystemInfoDebugSnapshot(
           platform: 'macos',
-          source: 'method-channel',
-          logs: const ['Loaded via macOS method channel.'],
-          data: Map<String, String>.from(result),
+          source: 'method-channel+fallback',
+          logs: const ['Loaded via macOS method channel and merged fallback values.'],
+          data: Map<String, String>.from(merged),
         );
-        return Map<String, String>.from(result);
+        return Map<String, String>.from(merged);
       }
     } catch (e) {
       _debugSnapshot = SystemInfoDebugSnapshot(
@@ -310,20 +313,147 @@ class _MacOSSystemInfo implements SystemInfoService {
     final result = <String, String>{};
     result['OS'] = Platform.operatingSystemVersion;
     result['Host'] = Platform.localHostname;
-    result['Kernel'] = 'Darwin ${Platform.operatingSystemVersion}';
-    result['Uptime'] = 'unavailable';
-    result['CPU'] = '${Platform.numberOfProcessors} cores';
-    result['Memory'] = 'unavailable';
-    result['Disk'] = 'unavailable';
-    result['Local IP'] = 'unavailable';
+    result['Kernel'] = _getKernel();
+    result['Uptime'] = _getUptime();
+    result['CPU'] = _getCPU();
+    result['Memory'] = _getMemory();
+    result['Disk'] = _getDisk('/');
+    result['Local IP'] = _getLocalIP();
     result['Locale'] = Platform.localeName;
     _debugSnapshot = SystemInfoDebugSnapshot(
       platform: 'macos',
       source: 'fallback',
-      logs: const ['Using basic dart:io fallback on macOS.'],
+      logs: const ['Using macOS dart:io fallback.'],
       data: Map<String, String>.from(result),
     );
     return result;
+  }
+
+  String _getKernel() {
+    final release = _runCommand('sysctl', ['-n', 'kern.osrelease']);
+    return release.isEmpty
+        ? 'Darwin ${Platform.operatingSystemVersion}'
+        : 'Darwin $release';
+  }
+
+  String _getCPU() {
+    final brand = _runCommand('sysctl', ['-n', 'machdep.cpu.brand_string']);
+    final cores = _runCommand('sysctl', ['-n', 'hw.logicalcpu']);
+    if (brand.isNotEmpty && cores.isNotEmpty) {
+      return '$brand ($cores)';
+    }
+    return '${Platform.numberOfProcessors} cores';
+  }
+
+  String _getUptime() {
+    final bootTime = _readMacBootTime();
+    if (bootTime == null) return 'unavailable';
+    return _formatDuration(DateTime.now().difference(bootTime));
+  }
+
+  String _getMemory() {
+    final totalBytes = int.tryParse(_runCommand('sysctl', ['-n', 'hw.memsize'])) ?? 0;
+    if (totalBytes <= 0) return 'unavailable';
+
+    final pageSize = int.tryParse(_runCommand('sysctl', ['-n', 'hw.pagesize'])) ?? 4096;
+    final vmStat = _runCommand('vm_stat', const []);
+    final freePages = _extractVmStatPages(vmStat, 'Pages free');
+    final speculativePages = _extractVmStatPages(vmStat, 'Pages speculative');
+    final fileBackedPages = _extractVmStatPages(vmStat, 'File-backed pages');
+    final cachedPages = fileBackedPages >= 0 ? fileBackedPages : 0;
+    final usableFreePages = (freePages >= 0 ? freePages : 0) - (speculativePages >= 0 ? speculativePages : 0);
+    final usedBytes = totalBytes - ((usableFreePages + cachedPages) * pageSize);
+    final clampedUsedBytes = usedBytes < 0 ? 0 : usedBytes;
+    final usedGiB = clampedUsedBytes / (1024.0 * 1024.0 * 1024.0);
+    final totalGiB = totalBytes / (1024.0 * 1024.0 * 1024.0);
+    final pct = totalBytes > 0 ? ((clampedUsedBytes / totalBytes) * 100).round() : 0;
+    return '${usedGiB.toStringAsFixed(2)} GiB / ${totalGiB.toStringAsFixed(2)} GiB ($pct%)';
+  }
+
+  String _getDisk(String mountPoint) {
+    final result = Process.runSync('df', ['-k', mountPoint], runInShell: false);
+    if (result.exitCode != 0) return 'unavailable';
+
+    final lines = result.stdout.toString().trim().split(RegExp(r'\r?\n'));
+    if (lines.length < 2) return 'unavailable';
+    final parts = lines[1].trim().split(RegExp(r'\s+'));
+    if (parts.length < 6) return 'unavailable';
+    final totalBlocks = int.tryParse(parts[1]) ?? 0;
+    final usedBlocks = int.tryParse(parts[2]) ?? 0;
+    if (totalBlocks <= 0) return 'unavailable';
+    final usedGiB = usedBlocks / (1024.0 * 1024.0);
+    final totalGiB = totalBlocks / (1024.0 * 1024.0);
+    final pct = ((usedBlocks / totalBlocks) * 100).round();
+    return '${usedGiB.toStringAsFixed(2)} GiB / ${totalGiB.toStringAsFixed(2)} GiB ($pct%)';
+  }
+
+  String _getLocalIP() {
+    final route = _runCommand('route', ['-n', 'get', 'default']);
+    final ifaceMatch = RegExp(r'interface:\s+(\S+)').firstMatch(route);
+    final preferredIf = ifaceMatch?.group(1);
+    if (preferredIf != null && preferredIf.isNotEmpty) {
+      final ip = _runCommand('ipconfig', ['getifaddr', preferredIf]);
+      if (ip.isNotEmpty) return ip;
+    }
+
+    for (final iface in const ['en0', 'en1', 'en2', 'en3']) {
+      final ip = _runCommand('ipconfig', ['getifaddr', iface]);
+      if (ip.isNotEmpty) return ip;
+    }
+
+    final ifconfig = _runCommand('ifconfig', const []);
+    for (final line in ifconfig.split(RegExp(r'\r?\n'))) {
+      final trimmed = line.trim();
+      final match = RegExp(r'inet\s+([0-9.]+)').firstMatch(trimmed);
+      if (match != null) {
+        final ip = match.group(1)!;
+        if (!ip.startsWith('127.')) return ip;
+      }
+    }
+    return 'unavailable';
+  }
+
+  String _runCommand(String executable, List<String> args) {
+    try {
+      final result = Process.runSync(executable, args, runInShell: false);
+      if (result.exitCode == 0) {
+        return result.stdout.toString().trim();
+      }
+    } catch (_) {}
+    return '';
+  }
+
+  DateTime? _readMacBootTime() {
+    final output = _runCommand('sysctl', ['-n', 'kern.boottime']);
+    final unixMatch = RegExp(r'sec\s*=\s*(\d+)').firstMatch(output);
+    if (unixMatch != null) {
+      final seconds = int.tryParse(unixMatch.group(1)!);
+      if (seconds != null) {
+        return DateTime.fromMillisecondsSinceEpoch(seconds * 1000);
+      }
+    }
+    return null;
+  }
+
+  int _extractVmStatPages(String vmStat, String label) {
+    for (final line in vmStat.split(RegExp(r'\r?\n'))) {
+      final match = RegExp('${RegExp.escape(label)}:\\s*(\\d+)\\.?').firstMatch(line);
+      if (match != null) {
+        return int.tryParse(match.group(1)!) ?? -1;
+      }
+    }
+    return -1;
+  }
+
+  String _formatDuration(Duration d) {
+    final days = d.inDays;
+    final hours = d.inHours % 24;
+    final mins = d.inMinutes % 60;
+    final secs = d.inSeconds % 60;
+    final buf = StringBuffer();
+    if (days > 0) buf.write('$days days, ');
+    buf.write('$hours hours, $mins mins, $secs secs');
+    return buf.toString();
   }
 }
 
