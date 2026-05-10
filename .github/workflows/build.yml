@@ -154,71 +154,6 @@ jobs:
             esac
             echo "✓ Copied plugins/${{ matrix.platform }} to platform directory"
 
-      - name: Patch macOS project for SystemInfo plugin
-        if: matrix.platform == 'macos-x64' || matrix.platform == 'macos-arm64'
-        shell: bash
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          import re
-          import uuid
-
-          pbxproj = Path('macos/Runner.xcodeproj/project.pbxproj')
-          text = pbxproj.read_text(encoding='utf-8')
-          if 'SystemInfoPlugin.swift' in text:
-              pbxproj.write_text(text, encoding='utf-8')
-              raise SystemExit(0)
-
-          file_id = uuid.uuid4().hex[:24].upper()
-          build_id = uuid.uuid4().hex[:24].upper()
-
-          file_ref = (
-              f'{file_id} /* SystemInfoPlugin.swift */ = '
-              '{{isa = PBXFileReference; lastKnownFileType = sourcecode.swift; '
-              'path = SystemInfoPlugin.swift; sourceTree = "<group>"; }};'
-          )
-          build_file = (
-              f'{build_id} /* SystemInfoPlugin.swift in Sources */ = '
-              f'{{isa = PBXBuildFile; fileRef = {file_id} /* SystemInfoPlugin.swift */; }};'
-          )
-
-          text, count = re.subn(
-              r'(^\s*[A-F0-9]{24} /\* AppDelegate\.swift in Sources \*/ = '
-              r'\{isa = PBXBuildFile; fileRef = [A-F0-9]{24} /\* AppDelegate\.swift \*/; \};\n)',
-              rf'\1\t\t{build_file}\n',
-              text,
-              count=1,
-              flags=re.M,
-          )
-          if count != 1:
-              raise SystemExit('Failed to inject macOS build file reference.')
-
-          text, count = re.subn(
-              r'(^\s*[A-F0-9]{24} /\* AppDelegate\.swift \*/ = '
-              r'\{isa = PBXFileReference; lastKnownFileType = sourcecode\.swift; '
-              r'path = AppDelegate\.swift; sourceTree = "<group>"; \};\n)',
-              rf'\1\t\t{file_ref}\n',
-              text,
-              count=1,
-              flags=re.M,
-          )
-          if count != 1:
-              raise SystemExit('Failed to inject macOS file reference.')
-
-          text, count = re.subn(
-              r'(^\s*[A-F0-9]{24} /\* AppDelegate\.swift in Sources \*/,\n)',
-              rf'\1\t\t\t\t{build_id} /* SystemInfoPlugin.swift in Sources */,\n',
-              text,
-              count=1,
-              flags=re.M,
-          )
-          if count != 1:
-              raise SystemExit('Failed to inject macOS sources build phase entry.')
-
-          pbxproj.write_text(text, encoding='utf-8')
-          PY
-          echo "=== Patched macOS project.pbxproj for SystemInfoPlugin.swift ==="
-
       - name: Patch Windows runner for SystemInfo plugin
         if: matrix.platform == 'windows-x64'
         shell: bash
@@ -376,18 +311,31 @@ jobs:
         if: matrix.platform == 'macos-x64' || matrix.platform == 'macos-arm64'
         shell: bash
         run: |
-          python3 -c "
-          with open('macos/Runner/AppDelegate.swift', 'r') as f:
-              swift = f.read()
-          if 'SystemInfoPlugin.register(with: self)' not in swift:
-              swift = swift.replace(
+          python3 - <<'PY'
+          from pathlib import Path
+
+          app_delegate = Path('macos/Runner/AppDelegate.swift')
+          plugin = Path('plugins/macos/SystemInfoPlugin.swift')
+          text = app_delegate.read_text(encoding='utf-8')
+          for import_line in ['import Foundation', 'import Darwin']:
+              if import_line not in text:
+                  text = text.replace('import FlutterMacOS', f'import FlutterMacOS\n{import_line}')
+          if 'SystemInfoPlugin.register(with: self)' not in text:
+              text = text.replace(
                   'GeneratedPluginRegistrant.register(with: self)',
                   'GeneratedPluginRegistrant.register(with: self)\n    SystemInfoPlugin.register(with: self)'
               )
-          with open('macos/Runner/AppDelegate.swift', 'w') as f:
-              f.write(swift)
-          "
-          echo "=== Patched macOS AppDelegate.swift ===" && head -5 macos/Runner/AppDelegate.swift
+          if 'public class SystemInfoPlugin: NSObject, FlutterPlugin' not in text:
+              plugin_text = plugin.read_text(encoding='utf-8')
+              plugin_lines = [
+                  line for line in plugin_text.splitlines()
+                  if not line.startswith('import ')
+              ]
+              plugin_text = '\n'.join(plugin_lines).strip()
+              text = text.rstrip() + '\n\n' + plugin_text
+          app_delegate.write_text(text, encoding='utf-8')
+          PY
+          echo "=== Patched macOS AppDelegate.swift ===" && tail -40 macos/Runner/AppDelegate.swift
 
       - name: Build (macOS)
         if: matrix.platform == 'macos-x64' || matrix.platform == 'macos-arm64'
