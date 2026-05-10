@@ -96,11 +96,6 @@ jobs:
             flutter_arch: x64
             artifact_name: dart-flutter-demo-showcase-android
             artifact_path: build/app/outputs/flutter-apk/
-          - platform: linux-arm64
-            os: ubuntu-24.04-arm
-            flutter_arch: arm64
-            artifact_name: dart-flutter-demo-showcase-linux-arm64
-            artifact_path: build/linux/arm64/release/bundle/
           - platform: macos-arm64
             os: macos-latest
             flutter_arch: arm64
@@ -139,7 +134,7 @@ jobs:
               cp plugins/windows/system_info_plugin.cpp windows/runner/plugins/system_info/
               cp plugins/windows/system_info_plugin.h windows/runner/plugins/system_info/
               ;;
-            linux-x64|linux-arm64)
+            linux-x64)
               mkdir -p linux/runner/plugins/system_info
               cp plugins/linux/system_info_plugin.cc linux/runner/plugins/system_info/
               cp plugins/linux/system_info_plugin.h linux/runner/plugins/system_info/
@@ -224,14 +219,14 @@ jobs:
           cp plugins/windows/SystemInfo.ps1 build/windows/x64/runner/Release/plugins/windows/
 
       - name: Build (Linux)
-        if: matrix.platform == 'linux-x64' || matrix.platform == 'linux-arm64'
+        if: matrix.platform == 'linux-x64'
         run: |
           sudo apt-get update
           sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev
           flutter build linux --release
 
       - name: Package Linux (deb/rpm/AppImage)
-        if: matrix.platform == 'linux-x64' || matrix.platform == 'linux-arm64'
+        if: matrix.platform == 'linux-x64'
         shell: bash
         run: |
           set -euo pipefail
@@ -425,7 +420,7 @@ jobs:
           retention-days: 7
 
       - name: Upload Linux artifact
-        if: matrix.platform == 'linux-x64' || matrix.platform == 'linux-arm64'
+        if: matrix.platform == 'linux-x64'
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact_name }}
@@ -433,7 +428,7 @@ jobs:
           retention-days: 7
 
       - name: Upload Linux packages (deb/rpm/AppImage)
-        if: matrix.platform == 'linux-x64' || matrix.platform == 'linux-arm64'
+        if: matrix.platform == 'linux-x64'
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact_name }}-packages
@@ -494,16 +489,10 @@ jobs:
           tar -czf "../dart-flutter-demo-showcase-linux-x64-v${VERSION}.tar.gz" .
           cd ../..
 
-          # Linux ARM64: tar.gz the directory
-          cd artifacts/dart-flutter-demo-showcase-linux-arm64
-          tar -czf "../dart-flutter-demo-showcase-linux-arm64-v${VERSION}.tar.gz" .
-          cd ../..
-
           # Linux packages (deb/rpm/AppImage)
-          for variant in linux-x64 linux-arm64; do
+          for variant in linux-x64; do
             find "artifacts/${variant}-packages" -type f | while read f; do
               ext="${f##*.}"
-              base=$(basename "$f")
               cp "$f" "artifacts/${variant}-v${VERSION}.${ext}"
             done
           done
@@ -581,10 +570,6 @@ jobs:
             artifacts/dart-flutter-demo-showcase-linux-x64-v*.AppImage
             artifacts/dart-flutter-demo-showcase-linux-x64-v*.deb
             artifacts/dart-flutter-demo-showcase-linux-x64-v*.rpm
-            artifacts/dart-flutter-demo-showcase-linux-arm64-v*.tar.gz
-            artifacts/dart-flutter-demo-showcase-linux-arm64-v*.AppImage
-            artifacts/dart-flutter-demo-showcase-linux-arm64-v*.deb
-            artifacts/dart-flutter-demo-showcase-linux-arm64-v*.rpm
             artifacts/dart-flutter-demo-showcase-macos-x64-v*.dmg
             artifacts/dart-flutter-demo-showcase-macos-arm64-v*.dmg
             artifacts/dart-flutter-demo-showcase-android-universal-v*.apk
