@@ -65,9 +65,9 @@ git config --global user.email "1830540513zyu@gmail.com"
 
 | 平台 | Runner | 构建命令 | 产物 |
 |------|--------|----------|------|
-| Windows x64 | `windows-latest` | `flutter build windows --release` | `dart-flutter-demo-showcase-windows-x64-v<version>.zip` |
-| Linux x64 | `ubuntu-latest` | `flutter build linux --release` | `dart-flutter-demo-showcase-linux-x64-v<version>.tar.gz` |
-| Android | `ubuntu-latest` | `flutter build apk --release` | `dart-flutter-demo-showcase-android-v<version>.apk` |
+| Windows x64 | `windows-latest` | `flutter build windows --release` | `dart-flutter-demo-windows-x64-v<version>.zip` |
+| Linux x64 | `ubuntu-latest` | `flutter build linux --release` | `dart-flutter-demo-linux-x64-v<version>.tar.gz` |
+| Android | `ubuntu-latest` | `flutter build apk --release` | `dart-flutter-demo-android-v<version>.apk` |
 
 **执行步骤：**
 1. 检出代码
@@ -92,8 +92,8 @@ v<pubspec版本号>
 
 **产物文件名格式：**
 ```
-dart-flutter-demo-showcase-<平台>-v<pubspec版本号>.<扩展名>
-示例：dart-flutter-demo-showcase-windows-x64-v0.0.1-alpha.1.zip
+dart-flutter-demo-<平台>-v<pubspec版本号>.<扩展名>
+示例：dart-flutter-demo-windows-x64-v0.0.1-alpha.1.zip
 ```
 
 ### 阶段三：发布 Release
@@ -114,9 +114,9 @@ dart-flutter-demo-showcase-<平台>-v<pubspec版本号>.<扩展名>
 
 | 文件 | 说明 |
 |------|------|
-| `dart-flutter-demo-showcase-windows-x64-v<version>.zip` | Windows 可执行文件压缩包 |
-| `dart-flutter-demo-showcase-linux-x64-v<version>.tar.gz` | Linux 可执行文件压缩包 |
-| `dart-flutter-demo-showcase-android-v<version>.apk` | Android 安装包 |
+| `dart-flutter-demo-windows-x64-v<version>.zip` | Windows 可执行文件压缩包 |
+| `dart-flutter-demo-linux-x64-v<version>.tar.gz` | Linux 可执行文件压缩包 |
+| `dart-flutter-demo-android-v<version>.apk` | Android 安装包 |
 
 ## 权限
 

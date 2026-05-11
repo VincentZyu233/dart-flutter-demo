@@ -79,32 +79,32 @@ jobs:
           - platform: windows-x64
             os: windows-latest
             flutter_arch: x64
-            artifact_name: dart-flutter-demo-showcase-windows-x64
+            artifact_name: dart-flutter-demo-windows-x64
             artifact_path: build/windows/x64/runner/Release/
           - platform: linux-x64
             os: ubuntu-22.04
             flutter_arch: x64
-            artifact_name: dart-flutter-demo-showcase-linux-x64
+            artifact_name: dart-flutter-demo-linux-x64
             artifact_path: build/linux/x64/release/bundle/
           - platform: macos-x64
             os: macos-15-intel
             flutter_arch: x64
-            artifact_name: dart-flutter-demo-showcase-macos-x64
+            artifact_name: dart-flutter-demo-macos-x64
             artifact_path: build/macos/Build/Products/Release/
           - platform: android-multiarch
             os: ubuntu-latest
             flutter_arch: x64
-            artifact_name: dart-flutter-demo-showcase-android
+            artifact_name: dart-flutter-demo-android
             artifact_path: build/app/outputs/flutter-apk/
           - platform: macos-arm64
             os: macos-latest
             flutter_arch: arm64
-            artifact_name: dart-flutter-demo-showcase-macos-arm64
+            artifact_name: dart-flutter-demo-macos-arm64
             artifact_path: build/macos/Build/Products/Release/
           - platform: ios-arm64
             os: macos-latest
             flutter_arch: arm64
-            artifact_name: dart-flutter-demo-showcase-ios
+            artifact_name: dart-flutter-demo-ios-arm64
             artifact_path: build/ios/ipa/
     steps:
       - name: Checkout code
@@ -154,52 +154,13 @@ jobs:
       - name: Patch Windows runner for SystemInfo plugin
         if: matrix.platform == 'windows-x64'
         shell: bash
-        run: |
-          python3 -c "
-          # Patch runner/CMakeLists.txt: add plugin source, include, and export flags
-          with open('windows/runner/CMakeLists.txt', 'r') as f:
-              cmake = f.read()
-          plugin_src = '  \"runner/plugins/system_info/system_info_plugin.cpp\"'
-          include_dir = '  \"\${CMAKE_CURRENT_SOURCE_DIR}/plugins/system_info\"'
-          export_flags = 'target_link_options(\${BINARY_NAME} PRIVATE /EXPORT:GetSystemInfoJson /EXPORT:FreeSystemInfoJson)'
-          if plugin_src not in cmake:
-              cmake = cmake.replace(
-                  '\"runner/win32_window.cpp\"',
-                  '\"runner/win32_window.cpp\"\n' + plugin_src
-              )
-          if include_dir not in cmake:
-              cmake = cmake.replace(
-                  'target_include_directories(\${BINARY_NAME} PRIVATE',
-                  'target_include_directories(\${BINARY_NAME} PRIVATE\n' + include_dir
-              )
-          if export_flags not in cmake:
-              cmake = cmake.replace(
-                  'target_link_libraries(\${BINARY_NAME} PRIVATE flutter flutter_wrapper_plugin)',
-                  'target_link_libraries(\${BINARY_NAME} PRIVATE flutter flutter_wrapper_plugin)\n\n' + export_flags
-              )
-          with open('windows/runner/CMakeLists.txt', 'w') as f:
-              f.write(cmake)
-          "
+        run: python3 plugins/windows/patch_ci.py
 
       - name: Patch Android for SystemInfo plugin
         if: matrix.platform == 'android-multiarch'
         shell: bash
         run: |
-          python3 -c "
-          kt_path = 'android/app/src/main/kotlin/com/example/dart_flutter_demo/MainActivity.kt'
-          with open(kt_path, 'r') as f:
-              kt = f.read()
-          kt = kt.replace(
-              'import io.flutter.embedding.android.FlutterActivity',
-              'import com.example.dart_flutter_demo.SystemInfoPlugin\nimport io.flutter.embedding.android.FlutterActivity'
-          )
-          kt = kt.replace(
-              'super.configureFlutterEngine(flutterEngine)',
-              'super.configureFlutterEngine(flutterEngine)\n        flutterEngine.plugins.add(SystemInfoPlugin())'
-          )
-          with open(kt_path, 'w') as f:
-              f.write(kt)
-          "
+          python3 plugins/android/patch_ci.py
           echo "=== Patched MainActivity.kt ===" && cat android/app/src/main/kotlin/com/example/dart_flutter_demo/MainActivity.kt
 
       - name: Install dependencies
@@ -247,30 +208,7 @@ jobs:
         if: matrix.platform == 'macos-x64' || matrix.platform == 'macos-arm64'
         shell: bash
         run: |
-          python3 - <<'PY'
-          from pathlib import Path
-
-          app_delegate = Path('macos/Runner/AppDelegate.swift')
-          plugin = Path('plugins/macos/SystemInfoPlugin.swift')
-          text = app_delegate.read_text(encoding='utf-8')
-          for import_line in ['import Foundation', 'import Darwin']:
-              if import_line not in text:
-                  text = text.replace('import FlutterMacOS', f'import FlutterMacOS\n{import_line}')
-          if 'SystemInfoPlugin.register(with: self)' not in text:
-              text = text.replace(
-                  'GeneratedPluginRegistrant.register(with: self)',
-                  'GeneratedPluginRegistrant.register(with: self)\n    SystemInfoPlugin.register(with: self)'
-              )
-          if 'public class SystemInfoPlugin: NSObject, FlutterPlugin' not in text:
-              plugin_text = plugin.read_text(encoding='utf-8')
-              plugin_lines = [
-                  line for line in plugin_text.splitlines()
-                  if not line.startswith('import ')
-              ]
-              plugin_text = '\n'.join(plugin_lines).strip()
-              text = text.rstrip() + '\n\n' + plugin_text
-          app_delegate.write_text(text, encoding='utf-8')
-          PY
+          python3 plugins/macos/patch_ci.py
           echo "=== Patched macOS AppDelegate.swift ===" && tail -40 macos/Runner/AppDelegate.swift
 
       - name: Build (macOS)
@@ -337,61 +275,8 @@ jobs:
         if: matrix.platform == 'ios-arm64'
         shell: bash
         run: |
-          python3 - <<'PY'
-          from pathlib import Path
-
-          app_delegate = Path('ios/Runner/AppDelegate.swift')
-          plugin = Path('plugins/ios/SystemInfoPlugin.swift')
-          text = app_delegate.read_text(encoding='utf-8')
-          for import_line in ['import Foundation', 'import UIKit']:
-              if import_line not in text:
-                  text = text.replace('import Flutter', f'import Flutter\n{import_line}')
-          if 'SystemInfoPlugin.register(with: self)' not in text:
-              text = text.replace(
-                  'GeneratedPluginRegistrant.register(with: self)',
-                  'GeneratedPluginRegistrant.register(with: self)\n    SystemInfoPlugin.register(with: self)'
-              )
-          if 'public class SystemInfoPlugin: NSObject, FlutterPlugin' not in text:
-              plugin_text = plugin.read_text(encoding='utf-8')
-              plugin_lines = [
-                  line for line in plugin_text.splitlines()
-                  if not line.startswith('import ')
-              ]
-              plugin_text = '\n'.join(plugin_lines).strip()
-              text = text.rstrip() + '\n\n' + plugin_text
-          app_delegate.write_text(text, encoding='utf-8')
-          PY
+          python3 plugins/ios/patch_ci.py
           echo "=== Patched iOS AppDelegate.swift ===" && tail -40 ios/Runner/AppDelegate.swift
-          # Force unsigned build settings in Xcode project and xcconfig.
-          python3 - <<'PY'
-          from pathlib import Path
-          import re
-
-          pbxproj = Path('ios/Runner.xcodeproj/project.pbxproj')
-          text = pbxproj.read_text(encoding='utf-8')
-          replacements = [
-              (r'CODE_SIGN_STYLE = Automatic;', 'CODE_SIGN_STYLE = Manual;'),
-              (r'CODE_SIGN_STYLE = Apple Development;', 'CODE_SIGN_STYLE = Manual;'),
-              (r'CODE_SIGNING_ALLOWED = YES;', 'CODE_SIGNING_ALLOWED = NO;'),
-              (r'CODE_SIGNING_REQUIRED = YES;', 'CODE_SIGNING_REQUIRED = NO;'),
-              (r'DEVELOPMENT_TEAM = [^;]*;', 'DEVELOPMENT_TEAM = "";'),
-              (r'PROVISIONING_PROFILE_SPECIFIER = [^;]*;', 'PROVISIONING_PROFILE_SPECIFIER = "";'),
-          ]
-          for pattern, replacement in replacements:
-              text = re.sub(pattern, replacement, text)
-          pbxproj.write_text(text, encoding='utf-8')
-          PY
-          cat > ios/Flutter/Release.xcconfig << 'XCEOF'
-          #include "Pods/Target Support Files/Pods-Runner/Pods-Runner.release.xcconfig"
-          #include "Generated.xcconfig"
-          CODE_SIGN_IDENTITY=
-          CODE_SIGNING_REQUIRED=NO
-          CODE_SIGNING_ALLOWED=NO
-          CODE_SIGN_STYLE=Manual
-          DEVELOPMENT_TEAM=
-          PROVISIONING_PROFILE_SPECIFIER=
-          XCEOF
-          echo "=== Patched AppDelegate.swift ===" && head -5 ios/Runner/AppDelegate.swift
           echo "=== Patched Xcode signing settings ===" && grep -nE "CODE_SIGN_STYLE|CODE_SIGNING_ALLOWED|CODE_SIGNING_REQUIRED|DEVELOPMENT_TEAM|PROVISIONING_PROFILE_SPECIFIER" ios/Runner.xcodeproj/project.pbxproj ios/Flutter/Release.xcconfig
 
       - name: Build (iOS IPA - no codesign)
@@ -404,7 +289,7 @@ jobs:
           cd build/ios/iphoneos
           mkdir Payload
           cp -r Runner.app Payload/
-          zip -r ../ipa/dart-flutter-demo-showcase-ios.ipa Payload
+          zip -r ../ipa/dart-flutter-demo-ios-arm64.ipa Payload
           cd ../..
 
       - name: Upload Windows artifact
@@ -455,7 +340,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact_name }}
-          path: build/ios/ipa/dart-flutter-demo-showcase-ios.ipa
+          path: build/ios/ipa/dart-flutter-demo-ios-arm64.ipa
           retention-days: 7
 
   # Stage 3: Package & publish release
@@ -476,50 +361,50 @@ jobs:
           VERSION="${{ needs.check-commit.outputs.version }}"
 
           # Windows: zip the directory
-          cd artifacts/dart-flutter-demo-showcase-windows-x64
-          zip -r "../dart-flutter-demo-showcase-windows-x64-v${VERSION}.zip" .
+          cd artifacts/dart-flutter-demo-windows-x64
+          zip -r "../dart-flutter-demo-windows-x64-v${VERSION}.zip" .
           cd ../..
 
           # Linux x64: tar.gz the directory
-          cd artifacts/dart-flutter-demo-showcase-linux-x64
-          tar -czf "../dart-flutter-demo-showcase-linux-x64-v${VERSION}.tar.gz" .
+          cd artifacts/dart-flutter-demo-linux-x64
+          tar -czf "../dart-flutter-demo-linux-x64-v${VERSION}.tar.gz" .
           cd ../..
 
           # Linux packages (deb/AppImage)
-          find "artifacts/dart-flutter-demo-showcase-linux-x64-packages" -type f | while read f; do
+          find "artifacts/dart-flutter-demo-linux-x64-packages" -type f | while read f; do
             base="$(basename "$f")"
             case "$base" in
               *.deb|*.AppImage)
                 ext="${base##*.}"
-                cp "$f" "artifacts/dart-flutter-demo-showcase-linux-x64-v${VERSION}.${ext}"
+                cp "$f" "artifacts/dart-flutter-demo-linux-x64-v${VERSION}.${ext}"
                 ;;
             esac
           done
 
           # macOS x64: keep the DMG produced in the build job
-          cp artifacts/dart-flutter-demo-showcase-macos-x64/dart-flutter-demo-showcase-macos-x64.dmg \
-             "artifacts/dart-flutter-demo-showcase-macos-x64-v${VERSION}.dmg"
+          cp artifacts/dart-flutter-demo-macos-x64/dart-flutter-demo-macos-x64.dmg \
+             "artifacts/dart-flutter-demo-macos-x64-v${VERSION}.dmg"
 
           # macOS ARM64: keep the DMG produced in the build job
-          cp artifacts/dart-flutter-demo-showcase-macos-arm64/dart-flutter-demo-showcase-macos-arm64.dmg \
-             "artifacts/dart-flutter-demo-showcase-macos-arm64-v${VERSION}.dmg"
+          cp artifacts/dart-flutter-demo-macos-arm64/dart-flutter-demo-macos-arm64.dmg \
+             "artifacts/dart-flutter-demo-macos-arm64-v${VERSION}.dmg"
 
           # Android: rename the APK
-          ls -lah artifacts/dart-flutter-demo-showcase-android/
-          test -f artifacts/dart-flutter-demo-showcase-android/app-release.apk
-          test -f artifacts/dart-flutter-demo-showcase-android/app-arm64-v8a-release.apk
-          test -f artifacts/dart-flutter-demo-showcase-android/app-x86_64-release.apk
+          ls -lah artifacts/dart-flutter-demo-android/
+          test -f artifacts/dart-flutter-demo-android/app-release.apk
+          test -f artifacts/dart-flutter-demo-android/app-arm64-v8a-release.apk
+          test -f artifacts/dart-flutter-demo-android/app-x86_64-release.apk
 
-          cp artifacts/dart-flutter-demo-showcase-android/app-release.apk \
-             "artifacts/dart-flutter-demo-showcase-android-universal-v${VERSION}.apk"
-          cp artifacts/dart-flutter-demo-showcase-android/app-arm64-v8a-release.apk \
-             "artifacts/dart-flutter-demo-showcase-android-arm64-v${VERSION}.apk"
-          cp artifacts/dart-flutter-demo-showcase-android/app-x86_64-release.apk \
-             "artifacts/dart-flutter-demo-showcase-android-x86_64-v${VERSION}.apk"
+          cp artifacts/dart-flutter-demo-android/app-release.apk \
+             "artifacts/dart-flutter-demo-android-universal-v${VERSION}.apk"
+          cp artifacts/dart-flutter-demo-android/app-arm64-v8a-release.apk \
+             "artifacts/dart-flutter-demo-android-arm64-v${VERSION}.apk"
+          cp artifacts/dart-flutter-demo-android/app-x86_64-release.apk \
+             "artifacts/dart-flutter-demo-android-x86_64-v${VERSION}.apk"
 
           # iOS: rename the IPA
-          cp artifacts/dart-flutter-demo-showcase-ios/dart-flutter-demo-showcase-ios.ipa \
-             "artifacts/dart-flutter-demo-showcase-ios-v${VERSION}.ipa"
+          cp artifacts/dart-flutter-demo-ios-arm64/dart-flutter-demo-ios-arm64.ipa \
+             "artifacts/dart-flutter-demo-ios-arm64-v${VERSION}.ipa"
 
           echo "📦 Packaged artifacts:"
           find artifacts/ -maxdepth 1 -type f
@@ -564,16 +449,16 @@ jobs:
           name: dart-flutter-demo (proof of concept) v${{ needs.check-commit.outputs.version }}
           body_path: release_body.md
           files: |
-            artifacts/dart-flutter-demo-showcase-windows-x64-v*.zip
-            artifacts/dart-flutter-demo-showcase-linux-x64-v*.tar.gz
-            artifacts/dart-flutter-demo-showcase-linux-x64-v*.AppImage
-            artifacts/dart-flutter-demo-showcase-linux-x64-v*.deb
-            artifacts/dart-flutter-demo-showcase-macos-x64-v*.dmg
-            artifacts/dart-flutter-demo-showcase-macos-arm64-v*.dmg
-            artifacts/dart-flutter-demo-showcase-android-universal-v*.apk
-            artifacts/dart-flutter-demo-showcase-android-arm64-v*.apk
-            artifacts/dart-flutter-demo-showcase-android-x86_64-v*.apk
-            artifacts/dart-flutter-demo-showcase-ios-v*.ipa
+            artifacts/dart-flutter-demo-windows-x64-v*.zip
+            artifacts/dart-flutter-demo-linux-x64-v*.tar.gz
+            artifacts/dart-flutter-demo-linux-x64-v*.AppImage
+            artifacts/dart-flutter-demo-linux-x64-v*.deb
+            artifacts/dart-flutter-demo-macos-x64-v*.dmg
+            artifacts/dart-flutter-demo-macos-arm64-v*.dmg
+            artifacts/dart-flutter-demo-android-universal-v*.apk
+            artifacts/dart-flutter-demo-android-arm64-v*.apk
+            artifacts/dart-flutter-demo-android-x86_64-v*.apk
+            artifacts/dart-flutter-demo-ios-arm64-v*.ipa
           draft: false
           prerelease: false
         env:

@@ -1,4 +1,5 @@
 ![dart-flutter-demo](https://socialify.git.ci/VincentZyuApps/dart-flutter-demo/image?description=1&font=Bitter&forks=1&issues=1&language=1&logo=https%3A%2F%2Fupload.wikimedia.org%2Fwikipedia%2Fcommons%2Fthumb%2F7%2F79%2FFlutter_logo.svg%2F120px-Flutter_logo.svg.png%3Futm_source%3Dcommons.wikimedia.org%26utm_campaign%3Dindex%26utm_content%3Dthumbnail%26_%3D20230821075714&name=1&owner=1&pulls=1&stargazers=1&theme=Auto)
+![onefetch](doc/preview-pics/onefetch.png)
 
 # dart_flutter_demo
 
@@ -15,12 +16,12 @@ A cross-platform Flutter UI showcase PoC (Proof of Concept) app, available on An
 
 ### About
 
-An app information dialog that displays app name, version, build number, publisher, and related links. Accessible from the AppBar menu.
+An app information dialog that displays app name, version, build number, publisher, and related links. Accessible from the AppBar menu.<br>
 ![about](doc/preview-pics/side1.about.png)
 
 ### Getting Started Guide
 
-A step-by-step walkthrough dialog showing the app's download channels, build options, and recommended development setup. Accessible from the AppBar menu.
+A step-by-step walkthrough dialog showing the app's download channels, build options, and recommended development setup. Accessible from the AppBar menu.<br>
 ![guide](doc/preview-pics/side1.guide.png)
 
 ## Pages
@@ -93,6 +94,13 @@ GitHub Actions handles automated builds and packaging. Push a commit containing 
 - **Linux / Windows GPU issues**: Launch with software rendering: `./dart_flutter_demo --disable-gpu`
 - **macOS virtual machines graphic issues** (VMware, VirtualBox, etc.): Flutter desktop apps require Apple Metal, which is unavailable in VMs. Use a physical Mac or [GitHub Actions macOS runners](https://github.com/VincentZyuApps/mac-test-action-runner) instead.
 - **Android APK**: Not signed with a persistent keystore. Each release uses a different debug key, so you must **uninstall the old version** before installing a new one to avoid signature conflicts.
+- **iOS IPA**: CI does not configure code signing. To run on your own device, self-sign the `.ipa` before installing.<br>*(for reference — tested on iPad Air 5, iOS 17; other devices/versions may vary)*:
+  1. Install [AltInstaller.msi](https://altstore.io) on Windows, open AltServer (system tray)
+  2. Connect iPad via USB → tray icon → Install AltStore → select your iPad
+  3. Enter your Apple ID (used only for signing, not stored)
+  4. On iPad: **Settings → General → VPN & Device Management → trust your Apple ID certificate**
+  5. Open AltStore → **+** → select the `.ipa` file
+  6. Free accounts need **re-signing every 7 days** (AltStore prompts automatically; keep AltServer running on your PC/iPad on same WiFi)
 
 ## Tech Stack
 
