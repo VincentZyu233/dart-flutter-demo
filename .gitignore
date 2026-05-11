@@ -25,7 +25,9 @@ ios/Flutter/Flutter.framework
 ios/Flutter/Flutter.podspec
 
 # Linux
+linux/build/
 linux/flutter/ephemeral/
+linux/runner/*.g.dart
 
 # macOS (if ever added)
 macos/Pods/

@@ -1,0 +1,19 @@
+display_name: Dart + Flutter Demo
+
+icon: ./assets/images/mahiro-pfp-VincentZyu-square.png
+
+keywords:
+  - Dart
+  - Flutter
+  - Demo
+
+generic_name: Dart Flutter Demo
+
+categories:
+  - Development
+  - Utility
+
+startup_notify: true
+app_run_file: AppRun
+
+include: []

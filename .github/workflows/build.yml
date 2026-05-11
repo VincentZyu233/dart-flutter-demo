@@ -82,7 +82,7 @@ jobs:
             artifact_name: dart-flutter-demo-showcase-windows-x64
             artifact_path: build/windows/x64/runner/Release/
           - platform: linux-x64
-            os: ubuntu-latest
+            os: ubuntu-22.04
             flutter_arch: x64
             artifact_name: dart-flutter-demo-showcase-linux-x64
             artifact_path: build/linux/x64/release/bundle/
@@ -123,7 +123,7 @@ jobs:
         run: flutter doctor -v
 
       - name: Generate platform projects
-        run: flutter create --project-name dart_flutter_demo --platforms=windows,linux,macos,android,ios .
+        run: flutter create --project-name dart_flutter_demo --platforms=windows,macos,android,ios .
 
       - name: Copy platform plugins
         shell: bash
@@ -135,9 +135,6 @@ jobs:
               cp plugins/windows/system_info_plugin.h windows/runner/plugins/system_info/
               ;;
             linux-x64)
-              mkdir -p linux/runner/plugins/system_info
-              cp plugins/linux/system_info_plugin.cc linux/runner/plugins/system_info/
-              cp plugins/linux/system_info_plugin.h linux/runner/plugins/system_info/
               ;;
             macos-x64|macos-arm64)
               mkdir -p macos/Runner
@@ -222,90 +219,22 @@ jobs:
           mkdir -p build/windows/x64/runner/Release/plugins/windows
           cp plugins/windows/SystemInfo.ps1 build/windows/x64/runner/Release/plugins/windows/
 
-      - name: Build (Linux)
+      - name: Install Linux packaging tools
         if: matrix.platform == 'linux-x64'
         run: |
           sudo apt-get update
-          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev
-          flutter build linux --release
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev rpm patchelf libfuse2
+          dart pub global activate flutter_distributor
+          echo "$HOME/.pub-cache/bin" >> "$GITHUB_PATH"
 
-      - name: Package Linux (deb/rpm/AppImage)
+      - name: Build & package Linux
         if: matrix.platform == 'linux-x64'
-        shell: bash
         run: |
-          set -euo pipefail
-          VERSION="${{ needs.check-commit.outputs.version }}"
-          if [ "${{ matrix.platform }}" = "linux-x64" ]; then
-            ARCH_DEB="amd64"; ARCH_RPM="x86_64"; ARCH_AI="x86_64"
-          else
-            ARCH_DEB="arm64"; ARCH_RPM="aarch64"; ARCH_AI="aarch64"
-          fi
-          APP="dart_flutter_demo"
-          PKG="dart-flutter-demo-showcase"
-          SRC="${{ matrix.artifact_path }}"
-          ROOT="$(pwd)"
-          STAGING="$ROOT/build/linux/staging"
-          APPDIR="$ROOT/build/linux/AppDir"
-          OUT="$ROOT/build/linux/packages"
-
-          # Install tools
-          sudo apt-get update
-          sudo apt-get install -y ruby ruby-dev
-          sudo gem install fpm --no-document
-
-          # Download appimagetool
-          wget -q "https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-${ARCH_AI}.AppImage" -O /tmp/ait
-          chmod +x /tmp/ait
-
-          mkdir -p "$OUT"
-
-          # ── Staging directory (FHS layout) ──
-          rm -rf "$STAGING"
-          mkdir -p "$STAGING/opt/$PKG" "$STAGING/usr/bin" \
-                   "$STAGING/usr/share/applications" \
-                   "$STAGING/usr/share/icons/hicolor/48x48/apps"
-          cp -r "$SRC"/* "$STAGING/opt/$PKG/"
-          ln -s "/opt/$PKG/$APP" "$STAGING/usr/bin/$APP"
-          cp packaging/linux/dart-flutter-demo.desktop "$STAGING/usr/share/applications/"
-          cp assets/images/mahiro-pfp-VincentZyu-square.png \
-             "$STAGING/usr/share/icons/hicolor/48x48/apps/dart-flutter-demo.png"
-
-          # ── DEB ──
-          fpm -s dir -t deb -n "$PKG" -v "$VERSION" \
-            -C "$STAGING" --prefix / \
-            --description "Dart+Flutter Demo - cross-platform Flutter UI showcase PoC" \
-            --url "https://github.com/${{ github.repository }}" \
-            --license "MIT" \
-            --architecture "$ARCH_DEB" \
-            --depends libgtk-3-0 --depends libglib2.0-0 --depends libc6 --depends libstdc++6 \
-            -p "$OUT/${PKG}-${ARCH_DEB}.deb" .
-
-          # ── RPM (version: hyphen → tilde) ──
-          RPMV=$(echo "$VERSION" | tr '-' '~')
-          fpm -s dir -t rpm -n "$PKG" -v "$RPMV" \
-            -C "$STAGING" --prefix / \
-            --description "Dart+Flutter Demo - cross-platform Flutter UI showcase PoC" \
-            --url "https://github.com/${{ github.repository }}" \
-            --license "MIT" \
-            --architecture "$ARCH_RPM" \
-            --depends gtk3 --depends glib2 --depends glibc --depends libstdc++ \
-            -p "$OUT/${PKG}-${ARCH_RPM}.rpm" .
-
-          # ── AppImage ──
-          rm -rf "$APPDIR"
-          mkdir -p "$APPDIR/usr/bin" "$APPDIR/usr/lib"
-          cp "$SRC/$APP" "$APPDIR/usr/bin/"
-          cp -r "$SRC/lib"/* "$APPDIR/usr/lib/"
-          cp -r "$SRC/data" "$APPDIR/usr/"
-          cp packaging/linux/AppRun "$APPDIR/"
-          chmod +x "$APPDIR/AppRun"
-          cp packaging/linux/dart-flutter-demo.desktop "$APPDIR/"
-          cp assets/images/mahiro-pfp-VincentZyu-square.png "$APPDIR/dart-flutter-demo.png"
-
-          /tmp/ait --appimage-extract-and-run "$APPDIR" "$OUT/${PKG}-${ARCH_AI}.AppImage"
-
-          echo "=== Linux packages ==="
-          ls -lah "$OUT/"
+          flutter_distributor package \
+            --skip-clean \
+            --platform linux \
+            --targets deb,rpm,appimage \
+            --build-target-platform linux-x64
 
       - name: Patch macOS for SystemInfo plugin
         if: matrix.platform == 'macos-x64' || matrix.platform == 'macos-arm64'
@@ -466,7 +395,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact_name }}-packages
-          path: build/linux/packages/
+          path: dist/
           retention-days: 7
 
       - name: Upload macOS artifact
@@ -524,11 +453,14 @@ jobs:
           cd ../..
 
           # Linux packages (deb/rpm/AppImage)
-          for variant in linux-x64; do
-            find "artifacts/dart-flutter-demo-showcase-${variant}-packages" -type f | while read f; do
-              ext="${f##*.}"
-              cp "$f" "artifacts/dart-flutter-demo-showcase-${variant}-v${VERSION}.${ext}"
-            done
+          find "artifacts/dart-flutter-demo-showcase-linux-x64-packages" -type f | while read f; do
+            base="$(basename "$f")"
+            case "$base" in
+              *.deb|*.rpm|*.AppImage)
+                ext="${base##*.}"
+                cp "$f" "artifacts/dart-flutter-demo-showcase-linux-x64-v${VERSION}.${ext}"
+                ;;
+            esac
           done
 
           # macOS x64: keep the DMG produced in the build job
