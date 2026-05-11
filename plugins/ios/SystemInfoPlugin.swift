@@ -36,7 +36,8 @@ public class SystemInfoPlugin: NSObject, FlutterPlugin {
 
     private func getOS() -> String {
         let device = UIDevice.current
-        return "\(device.model) (\(device.systemName) \(device.systemVersion))"
+        let osName = device.model == "iPad" ? "iPadOS" : device.systemName
+        return "\(device.model) (\(osName) \(device.systemVersion))"
     }
 
     private func getHost() -> String {

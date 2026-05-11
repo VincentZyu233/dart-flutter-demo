@@ -14,7 +14,9 @@
 | **Android** | [![android-x64](https://img.shields.io/badge/android-x86__64_apk-8FE388.svg?logo=android)](__BASE_URL__/dart-flutter-demo-showcase-android-x86_64-v__VERSION__.apk) | [![android-arm64](https://img.shields.io/badge/android-ARM64_apk-168039.svg?logo=android)](__BASE_URL__/dart-flutter-demo-showcase-android-arm64-v__VERSION__.apk) | [![android-universal](https://img.shields.io/badge/android-universal_apk-3DDC84.svg?logo=android)](__BASE_URL__/dart-flutter-demo-showcase-android-universal-v__VERSION__.apk) |
 | **iOS** | *none yet* | [![ios-arm64](https://img.shields.io/badge/iOS-ARM64_IPA-000000.svg?logo=apple)](__BASE_URL__/dart-flutter-demo-showcase-ios-v__VERSION__.ipa) | *none yet* |
 
-> `none yet` means this platform is not included in the current GitHub Actions build matrix yet.
+> *`none yet`* means this platform is not included in the current GitHub Actions build matrix yet.
+>
+> ⚠️ **Android**: APKs are not signed with a persistent keystore, so you must uninstall the previous version before installing a new one to avoid signature conflicts.
 
 ### 📥 Quick Install
 

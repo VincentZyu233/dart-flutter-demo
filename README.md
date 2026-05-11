@@ -29,7 +29,35 @@ A step-by-step walkthrough dialog showing the app's download channels, build opt
 
 Displays system information through native C++ (Windows), Kotlin (Android), Swift (iOS), and dart:io fallbacks. Shows OS, hostname, kernel, uptime, CPU, memory, disk, and local IP. Includes built-in debug trace viewing plus copy/export actions for diagnostics.
 Source: [lib/pages/page0_system_info.dart](https://github.com/VincentZyu233/dart-flutter-demo/blob/main/lib/pages/page0_system_info.dart)
-![page0](doc/preview-pics/page0.png)
+
+<div align="center">
+<table>
+  <thead>
+    <tr>
+      <th align="center">Dart + Flutter Demo (System Info Page)</th>
+      <th align="center">Platform System Info (fastfetch)</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td align="center"><sub>Windows 11</sub><br><img src="doc/preview-pics/page0.windows11.png" width="100%"/></td>
+      <td align="center"><sub>Windows 11</sub><br><img src="doc/preview-pics/fastfetch.windows11.png" width="100%"/></td>
+    </tr>
+    <tr>
+      <td align="center"><sub>Ubuntu 24.04 LXQt</sub><br><img src="doc/preview-pics/page0.ubuntu24.lxqt.png" width="100%"/></td>
+      <td align="center"><sub>Ubuntu 24.04 LXQt</sub><br><img src="doc/preview-pics/fastfetch.ubuntu24.lxqt.png" width="100%"/></td>
+    </tr>
+    <tr>
+      <td align="center"><sub>macOS 14</sub><br><img src="doc/preview-pics/page0.macos14.png" width="100%"/></td>
+      <td align="center"><sub>macOS 14</sub><br><img src="doc/preview-pics/fastfetch.macos14.png" width="100%"/></td>
+    </tr>
+    <tr>
+      <td align="center"><sub>Android 15</sub><br><img src="doc/preview-pics/page0.android15.png" width="100%"/></td>
+      <td align="center"><sub>Android 15</sub><br><img src="doc/preview-pics/fastfetch.android15.termux.png" width="100%"/></td>
+    </tr>
+  </tbody>
+</table>
+</div>
 
 ### 1. Dialog Lab
 
@@ -64,6 +92,7 @@ GitHub Actions handles automated builds and packaging. Push a commit containing 
 
 - **Linux / Windows GPU issues**: Launch with software rendering: `./dart_flutter_demo --disable-gpu`
 - **macOS virtual machines graphic issues** (VMware, VirtualBox, etc.): Flutter desktop apps require Apple Metal, which is unavailable in VMs. Use a physical Mac or [GitHub Actions macOS runners](https://github.com/VincentZyuApps/mac-test-action-runner) instead.
+- **Android APK**: Not signed with a persistent keystore. Each release uses a different debug key, so you must **uninstall the old version** before installing a new one to avoid signature conflicts.
 
 ## Tech Stack
 
