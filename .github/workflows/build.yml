@@ -234,11 +234,17 @@ jobs:
       - name: Build & package Linux
         if: matrix.platform == 'linux-x64'
         run: |
+          # RPM 不允许版本号含连字符 '-'，替换为波浪号 '~'
+          # '~' 在 RPM 中表示"早于"同名正式版本，语义与预发布一致
+          # ⚠️ 用 tr 避免 bash 将 ~ 展开为 $HOME
+          RPM_VER=$(grep '^version:' pubspec.yaml | sed 's/version: //' | tr '-' '~')
+          sed -i "s/^version: .*/version: $RPM_VER/" pubspec.yaml
           flutter_distributor package \
             --skip-clean \
             --platform linux \
             --targets deb,rpm,appimage \
             --build-target-platform linux-x64
+          git restore pubspec.yaml
 
       - name: Patch macOS for SystemInfo plugin
         if: matrix.platform == 'macos-x64' || matrix.platform == 'macos-arm64'
