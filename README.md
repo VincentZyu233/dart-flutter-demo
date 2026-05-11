@@ -11,48 +11,48 @@ A cross-platform Flutter UI showcase PoC (Proof of Concept) app, available on An
 [![Android x86_64 | ARM64](https://img.shields.io/badge/Android-x86_64_|_ARM64-3DDC84?style=for-the-badge&logo=android&logoColor=white)](https://github.com/VincentZyuApps/dart-flutter-demo/releases)
 [![iOS ARM64](https://img.shields.io/badge/iOS-ARM64-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/VincentZyuApps/dart-flutter-demo/releases)
 
-## Pages
+## Dialogs
 
-### 0. About
+### About
 
-An app information page that displays app name, version, build number, publisher, and related links. Serves as an entry point for app metadata and project information.
-Source: [lib/pages/page0_about.dart](https://github.com/VincentZyu233/dart-flutter-demo/blob/main/lib/pages/page0_about.dart)
+An app information dialog that displays app name, version, build number, publisher, and related links. Accessible from the AppBar menu.
 ![about](doc/preview-pics/about.png)
 
-### 1. Getting Started Guide
+### Getting Started Guide
 
-A step-by-step walkthrough showing the app's download channels, build options, and recommended development setup. Helps new users quickly understand how to obtain, build, and run the app across platforms.
-Source: [lib/pages/page1_guide.dart](https://github.com/VincentZyu233/dart-flutter-demo/blob/main/lib/pages/page1_guide.dart)
+A step-by-step walkthrough dialog showing the app's download channels, build options, and recommended development setup. Accessible from the AppBar menu.
 ![guide](doc/preview-pics/guide.png)
 
-### 2. System Info
+## Pages
+
+### 0. System Info
 
 Displays system information through native C++ (Windows), Kotlin (Android), Swift (iOS), and dart:io fallbacks. Shows OS, hostname, kernel, uptime, CPU, memory, disk, and local IP. Includes built-in debug trace viewing plus copy/export actions for diagnostics.
-Source: [lib/pages/page2_system_info.dart](https://github.com/VincentZyu233/dart-flutter-demo/blob/main/lib/pages/page2_system_info.dart)
+Source: [lib/pages/page0_system_info.dart](https://github.com/VincentZyu233/dart-flutter-demo/blob/main/lib/pages/page0_system_info.dart)
 ![page0](doc/preview-pics/page0.png)
 
-### 3. Dialog Lab
+### 1. Dialog Lab
 
 A compact dialog lab with both a modern Flutter dialog and a classic Win32-style dialog recreation. Uses retro borders, inset input styling, and larger action buttons to demonstrate that Flutter can reproduce very different interaction and visual languages in one app.
-Source: [lib/pages/page3_dialog_lab.dart](https://github.com/VincentZyu233/dart-flutter-demo/blob/main/lib/pages/page3_dialog_lab.dart)
+Source: [lib/pages/page1_dialog_lab.dart](https://github.com/VincentZyu233/dart-flutter-demo/blob/main/lib/pages/page1_dialog_lab.dart)
 ![page1](doc/preview-pics/page1.png)
 
-### 4. Typography Studio
+### 2. Typography Studio
 
 An interactive text playground. Adjust font size, letter spacing, and line height with live controls. Switch between the system font, Google Fonts, and a one-shot local font file. Includes live preview text editing, dark/light auto text color switching, preset swatches, and a custom color picker with RGB and HEX readout.
-Source: [lib/pages/page4_typography_studio.dart](https://github.com/VincentZyu233/dart-flutter-demo/blob/main/lib/pages/page4_typography_studio.dart)
+Source: [lib/pages/page2_typography_studio.dart](https://github.com/VincentZyu233/dart-flutter-demo/blob/main/lib/pages/page2_typography_studio.dart)
 ![page2](doc/preview-pics/page2.png)
 
-### 5. Adaptive Grid
+### 3. Adaptive Grid
 
 A responsive GitHub repository browser driven by LayoutBuilder. Fetches repositories from configurable personal or organization repository pages, supports proxy configuration, filter and sort controls, collapsible configuration UI, layout switching between Grid / Masonry / List, and adjustable target columns from 5 to 1.
-Source: [lib/pages/page5_adaptive_grid.dart](https://github.com/VincentZyu233/dart-flutter-demo/blob/main/lib/pages/page5_adaptive_grid.dart)
+Source: [lib/pages/page3_adaptive_grid.dart](https://github.com/VincentZyu233/dart-flutter-demo/blob/main/lib/pages/page3_adaptive_grid.dart)
 ![page3](doc/preview-pics/page3.png)
 
-### 6. Controls & Feedback
+### 4. Controls & Feedback
 
 A compact lab for interactive controls and user feedback. Includes radios, checkboxes, switches, progress indicators, snack bars, and bottom sheets. Useful for checking state transitions, motion, and component responsiveness.
-Source: [lib/pages/page6_controls_feedback.dart](https://github.com/VincentZyu233/dart-flutter-demo/blob/main/lib/pages/page6_controls_feedback.dart)
+Source: [lib/pages/page4_controls_feedback.dart](https://github.com/VincentZyu233/dart-flutter-demo/blob/main/lib/pages/page4_controls_feedback.dart)
 ![page4](doc/preview-pics/page4.png)
 
 
