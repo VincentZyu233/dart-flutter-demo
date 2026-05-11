@@ -231,20 +231,104 @@ jobs:
         if: matrix.platform == 'linux-x64'
         run: flutter create --project-name dart_flutter_demo --platforms=linux .
 
-      - name: Build & package Linux
+      - name: Build & package Linux (deb + AppImage)
         if: matrix.platform == 'linux-x64'
         run: |
-          # RPM 不允许版本号含连字符 '-'，替换为波浪号 '~'
-          # '~' 在 RPM 中表示"早于"同名正式版本，语义与预发布一致
-          # ⚠️ 用 tr 避免 bash 将 ~ 展开为 $HOME
-          RPM_VER=$(grep '^version:' pubspec.yaml | sed 's/version: //' | tr '-' '~')
-          sed -i "s/^version: .*/version: $RPM_VER/" pubspec.yaml
           flutter_distributor package \
             --skip-clean \
             --platform linux \
-            --targets deb,rpm,appimage \
+            --targets deb,appimage \
             --build-target-platform linux-x64
-          git restore pubspec.yaml
+
+      - name: Package Linux RPM
+        if: matrix.platform == 'linux-x64'
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="${{ needs.check-commit.outputs.version }}"
+          RPMV=$(echo "$VERSION" | tr '-' '~')
+          PKG="dart-flutter-demo-showcase"
+          APP="dart_flutter_demo"
+          SRC="build/linux/x64/release/bundle"
+          ARCH="x86_64"
+
+          STAGING="$(pwd)/build/linux/rpm-staging"
+          rm -rf "$STAGING"
+          mkdir -p "$STAGING/opt/$PKG" "$STAGING/usr/bin" \
+                   "$STAGING/usr/share/applications" \
+                   "$STAGING/usr/share/icons/hicolor/48x48/apps"
+          cp -r "$SRC"/* "$STAGING/opt/$PKG/"
+          ln -s "/opt/$PKG/$APP" "$STAGING/usr/bin/$APP"
+
+          cat > "$STAGING/usr/share/applications/dart-flutter-demo.desktop" << 'DESKTOP'
+          [Desktop Entry]
+          Type=Application
+          Name=Dart + Flutter Demo
+          Comment=A cross-platform Flutter UI showcase PoC app
+          Exec=dart_flutter_demo
+          Icon=dart-flutter-demo
+          Terminal=false
+          Categories=Development;Utility;
+          DESKTOP
+
+          cp assets/images/mahiro-pfp-VincentZyu-square.png \
+             "$STAGING/usr/share/icons/hicolor/48x48/apps/dart-flutter-demo.png"
+
+          for so in "$STAGING/opt/$PKG/lib/"*.so; do
+            CURRENT=$(patchelf --print-rpath "$so" 2>/dev/null || true)
+            if [ -n "$CURRENT" ] && echo "$CURRENT" | grep -qv '\$ORIGIN'; then
+              patchelf --set-rpath '$ORIGIN' "$so"
+            fi
+          done
+
+          RPMBUILD="$(pwd)/build/linux/rpmbuild"
+          rm -rf "$RPMBUILD"
+          mkdir -p "$RPMBUILD"/{BUILD,BUILDROOT,RPMS,SOURCES,SPECS,SRPMS}
+
+          cat > "$RPMBUILD/SPECS/$PKG.spec" << EOF
+          Name:           $PKG
+          Version:        $RPMV
+          Release:        1%{?dist}
+          Summary:        A cross-platform Flutter UI showcase PoC app
+          Group:          Applications/Development
+          License:        MIT
+          URL:            https://github.com/${{ github.repository }}
+          Packager:       VincentZyu <vincentzyu233@gmail.com>
+          Requires:       gtk3, glib2, libstdc++, glibc
+          BuildArch:      $ARCH
+
+          %description
+          A cross-platform Flutter UI showcase PoC app built with Dart and Flutter.
+
+          %install
+          mkdir -p %{buildroot}/opt/$PKG
+          mkdir -p %{buildroot}/usr/bin
+          mkdir -p %{buildroot}/usr/share/applications
+          mkdir -p %{buildroot}/usr/share/icons/hicolor/48x48/apps
+          cp -r %{_sourcedir}/opt/$PKG/* %{buildroot}/opt/$PKG/
+          ln -sf /opt/$PKG/$APP %{buildroot}/usr/bin/$APP
+          cp %{_sourcedir}/usr/share/applications/dart-flutter-demo.desktop %{buildroot}/usr/share/applications/
+          cp %{_sourcedir}/usr/share/icons/hicolor/48x48/apps/dart-flutter-demo.png %{buildroot}/usr/share/icons/hicolor/48x48/apps/
+
+          %postun
+          rm -f /usr/bin/$APP
+
+          %files
+          /opt/$PKG
+          /usr/bin/$APP
+          /usr/share/applications/dart-flutter-demo.desktop
+          /usr/share/icons/hicolor/48x48/apps/dart-flutter-demo.png
+          EOF
+
+          cp -r "$STAGING"/* "$RPMBUILD/BUILD/"
+
+          QA_RPATHS=17 rpmbuild --define "_topdir $RPMBUILD" -bb "$RPMBUILD/SPECS/$PKG.spec"
+
+          RPM_FILE=$(find "$RPMBUILD/RPMS" -name '*.rpm' | head -1)
+          mkdir -p dist/
+          cp "$RPM_FILE" "dist/"
+          echo "=== RPM package ==="
+          ls -lah dist/*.rpm
 
       - name: Patch macOS for SystemInfo plugin
         if: matrix.platform == 'macos-x64' || matrix.platform == 'macos-arm64'
