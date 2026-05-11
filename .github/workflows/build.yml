@@ -223,7 +223,7 @@ jobs:
         if: matrix.platform == 'linux-x64'
         run: |
           sudo apt-get update
-          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev rpm patchelf libfuse2
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev patchelf libfuse2
           wget -q "https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage" -O /tmp/appimagetool
           chmod +x /tmp/appimagetool
           sudo mv /tmp/appimagetool /usr/local/bin/appimagetool
@@ -242,96 +242,6 @@ jobs:
             --platform linux \
             --targets deb,appimage \
             --build-target-platform linux-x64
-
-      - name: Package Linux RPM
-        if: matrix.platform == 'linux-x64'
-        shell: bash
-        run: |
-          set -euo pipefail
-          VERSION="${{ needs.check-commit.outputs.version }}"
-          RPMV=$(echo "$VERSION" | tr '-' '~')
-          PKG="dart-flutter-demo-showcase"
-          APP="dart_flutter_demo"
-          SRC="build/linux/x64/release/bundle"
-          ARCH="x86_64"
-
-          STAGING="$(pwd)/build/linux/rpm-staging"
-          rm -rf "$STAGING"
-          mkdir -p "$STAGING/opt/$PKG" "$STAGING/usr/bin" \
-                   "$STAGING/usr/share/applications" \
-                   "$STAGING/usr/share/icons/hicolor/48x48/apps"
-          cp -r "$SRC"/* "$STAGING/opt/$PKG/"
-          ln -s "/opt/$PKG/$APP" "$STAGING/usr/bin/$APP"
-
-          cat > "$STAGING/usr/share/applications/dart-flutter-demo.desktop" << 'DESKTOP'
-          [Desktop Entry]
-          Type=Application
-          Name=Dart + Flutter Demo
-          Comment=A cross-platform Flutter UI showcase PoC app
-          Exec=dart_flutter_demo
-          Icon=dart-flutter-demo
-          Terminal=false
-          Categories=Development;Utility;
-          DESKTOP
-
-          cp assets/images/mahiro-pfp-VincentZyu-square.png \
-             "$STAGING/usr/share/icons/hicolor/48x48/apps/dart-flutter-demo.png"
-
-          for so in "$STAGING/opt/$PKG/lib/"*.so; do
-            CURRENT=$(patchelf --print-rpath "$so" 2>/dev/null || true)
-            if [ -n "$CURRENT" ] && echo "$CURRENT" | grep -qv '\$ORIGIN'; then
-              patchelf --set-rpath '$ORIGIN' "$so"
-            fi
-          done
-
-          RPMBUILD="$(pwd)/build/linux/rpmbuild"
-          rm -rf "$RPMBUILD"
-          mkdir -p "$RPMBUILD"/{BUILD,BUILDROOT,RPMS,SOURCES,SPECS,SRPMS}
-
-          cat > "$RPMBUILD/SPECS/$PKG.spec" << EOF
-          Name:           $PKG
-          Version:        $RPMV
-          Release:        1%{?dist}
-          Summary:        A cross-platform Flutter UI showcase PoC app
-          Group:          Applications/Development
-          License:        MIT
-          URL:            https://github.com/${{ github.repository }}
-          Packager:       VincentZyu <vincentzyu233@gmail.com>
-          Requires:       gtk3, glib2, libstdc++, glibc
-          BuildArch:      $ARCH
-
-          %description
-          A cross-platform Flutter UI showcase PoC app built with Dart and Flutter.
-
-          %install
-          mkdir -p %{buildroot}/opt/$PKG
-          mkdir -p %{buildroot}/usr/bin
-          mkdir -p %{buildroot}/usr/share/applications
-          mkdir -p %{buildroot}/usr/share/icons/hicolor/48x48/apps
-          cp -r %{_sourcedir}/opt/$PKG/* %{buildroot}/opt/$PKG/
-          ln -sf /opt/$PKG/$APP %{buildroot}/usr/bin/$APP
-          cp %{_sourcedir}/usr/share/applications/dart-flutter-demo.desktop %{buildroot}/usr/share/applications/
-          cp %{_sourcedir}/usr/share/icons/hicolor/48x48/apps/dart-flutter-demo.png %{buildroot}/usr/share/icons/hicolor/48x48/apps/
-
-          %postun
-          rm -f /usr/bin/$APP
-
-          %files
-          /opt/$PKG
-          /usr/bin/$APP
-          /usr/share/applications/dart-flutter-demo.desktop
-          /usr/share/icons/hicolor/48x48/apps/dart-flutter-demo.png
-          EOF
-
-          cp -r "$STAGING"/* "$RPMBUILD/BUILD/"
-
-          QA_RPATHS=17 rpmbuild --define "_topdir $RPMBUILD" -bb "$RPMBUILD/SPECS/$PKG.spec"
-
-          RPM_FILE=$(find "$RPMBUILD/RPMS" -name '*.rpm' | head -1)
-          mkdir -p dist/
-          cp "$RPM_FILE" "dist/"
-          echo "=== RPM package ==="
-          ls -lah dist/*.rpm
 
       - name: Patch macOS for SystemInfo plugin
         if: matrix.platform == 'macos-x64' || matrix.platform == 'macos-arm64'
@@ -499,7 +409,7 @@ jobs:
           path: ${{ matrix.artifact_path }}
           retention-days: 7
 
-      - name: Upload Linux packages (deb/rpm/AppImage)
+      - name: Upload Linux packages (deb/AppImage)
         if: matrix.platform == 'linux-x64'
         uses: actions/upload-artifact@v4
         with:
@@ -561,11 +471,11 @@ jobs:
           tar -czf "../dart-flutter-demo-showcase-linux-x64-v${VERSION}.tar.gz" .
           cd ../..
 
-          # Linux packages (deb/rpm/AppImage)
+          # Linux packages (deb/AppImage)
           find "artifacts/dart-flutter-demo-showcase-linux-x64-packages" -type f | while read f; do
             base="$(basename "$f")"
             case "$base" in
-              *.deb|*.rpm|*.AppImage)
+              *.deb|*.AppImage)
                 ext="${base##*.}"
                 cp "$f" "artifacts/dart-flutter-demo-showcase-linux-x64-v${VERSION}.${ext}"
                 ;;
@@ -644,7 +554,6 @@ jobs:
             artifacts/dart-flutter-demo-showcase-linux-x64-v*.tar.gz
             artifacts/dart-flutter-demo-showcase-linux-x64-v*.AppImage
             artifacts/dart-flutter-demo-showcase-linux-x64-v*.deb
-            artifacts/dart-flutter-demo-showcase-linux-x64-v*.rpm
             artifacts/dart-flutter-demo-showcase-macos-x64-v*.dmg
             artifacts/dart-flutter-demo-showcase-macos-arm64-v*.dmg
             artifacts/dart-flutter-demo-showcase-android-universal-v*.apk
