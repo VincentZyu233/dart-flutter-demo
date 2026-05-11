@@ -227,6 +227,10 @@ jobs:
           dart pub global activate flutter_distributor
           echo "$HOME/.pub-cache/bin" >> "$GITHUB_PATH"
 
+      - name: Generate Linux project files
+        if: matrix.platform == 'linux-x64'
+        run: flutter create --project-name dart_flutter_demo --platforms=linux .
+
       - name: Build & package Linux
         if: matrix.platform == 'linux-x64'
         run: |
