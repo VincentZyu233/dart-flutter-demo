@@ -23,8 +23,7 @@ if "SystemInfoPlugin.register(with:" not in text:
         registration = (
             "\n"
             "    override func applicationDidFinishLaunching(_ notification: Notification) {\n"
-            '        let systemInfoRegistrar = self.registrar(forPlugin: "SystemInfoPlugin")\n'
-            "        SystemInfoPlugin.register(with: systemInfoRegistrar)\n"
+            "        SystemInfoPlugin.register(with: self)\n"
             "        super.applicationDidFinishLaunching(notification)\n"
             "    }\n"
         )
