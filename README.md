@@ -16,12 +16,12 @@ A cross-platform Flutter UI showcase PoC (Proof of Concept) app, available on An
 ### About
 
 An app information dialog that displays app name, version, build number, publisher, and related links. Accessible from the AppBar menu.
-![about](doc/preview-pics/about.png)
+![about](doc/preview-pics/side1.about.png)
 
 ### Getting Started Guide
 
 A step-by-step walkthrough dialog showing the app's download channels, build options, and recommended development setup. Accessible from the AppBar menu.
-![guide](doc/preview-pics/guide.png)
+![guide](doc/preview-pics/side1.guide.png)
 
 ## Pages
 
@@ -63,25 +63,25 @@ Source: [lib/pages/page0_system_info.dart](https://github.com/VincentZyu233/dart
 
 A compact dialog lab with both a modern Flutter dialog and a classic Win32-style dialog recreation. Uses retro borders, inset input styling, and larger action buttons to demonstrate that Flutter can reproduce very different interaction and visual languages in one app.
 Source: [lib/pages/page1_dialog_lab.dart](https://github.com/VincentZyu233/dart-flutter-demo/blob/main/lib/pages/page1_dialog_lab.dart)
-![page1](doc/preview-pics/page1.png)
+![page1](doc/preview-pics/page1.dialog.png)
 
 ### 2. Typography Studio
 
 An interactive text playground. Adjust font size, letter spacing, and line height with live controls. Switch between the system font, Google Fonts, and a one-shot local font file. Includes live preview text editing, dark/light auto text color switching, preset swatches, and a custom color picker with RGB and HEX readout.
 Source: [lib/pages/page2_typography_studio.dart](https://github.com/VincentZyu233/dart-flutter-demo/blob/main/lib/pages/page2_typography_studio.dart)
-![page2](doc/preview-pics/page2.png)
+![page2](doc/preview-pics/page2.typograghy.png)
 
 ### 3. Adaptive Grid
 
 A responsive GitHub repository browser driven by LayoutBuilder. Fetches repositories from configurable personal or organization repository pages, supports proxy configuration, filter and sort controls, collapsible configuration UI, layout switching between Grid / Masonry / List, and adjustable target columns from 5 to 1.
 Source: [lib/pages/page3_adaptive_grid.dart](https://github.com/VincentZyu233/dart-flutter-demo/blob/main/lib/pages/page3_adaptive_grid.dart)
-![page3](doc/preview-pics/page3.png)
+![page3](doc/preview-pics/page3.masonry-grid.png)
 
 ### 4. Controls & Feedback
 
 A compact lab for interactive controls and user feedback. Includes radios, checkboxes, switches, progress indicators, snack bars, and bottom sheets. Useful for checking state transitions, motion, and component responsiveness.
 Source: [lib/pages/page4_controls_feedback.dart](https://github.com/VincentZyu233/dart-flutter-demo/blob/main/lib/pages/page4_controls_feedback.dart)
-![page4](doc/preview-pics/page4.png)
+![page4](doc/preview-pics/page4.controls-schema-feedback.png)
 
 
 ## CI/CD
