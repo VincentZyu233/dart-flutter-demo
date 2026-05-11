@@ -89,7 +89,7 @@ public class SystemInfoPlugin: NSObject, FlutterPlugin {
             do {
                 let values = try url.resourceValues(forKeys: [.volumeTotalCapacityKey, .volumeAvailableCapacityForImportantUsageKey])
                 if let total = values.volumeTotalCapacity, let available = values.volumeAvailableCapacityForImportantUsage {
-                    let used = total - available
+                    let used = total - Int(available)
                     let totalGiB = Double(total) / (1024.0 * 1024.0 * 1024.0)
                     let usedGiB = Double(used) / (1024.0 * 1024.0 * 1024.0)
                     let pct = total > 0 ? Int((Double(used) / Double(total)) * 100) : 0
