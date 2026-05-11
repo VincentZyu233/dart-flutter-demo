@@ -276,7 +276,8 @@ jobs:
         shell: bash
         run: |
           python3 plugins/ios/patch_ci.py
-          echo "=== Patched iOS AppDelegate.swift ===" && tail -40 ios/Runner/AppDelegate.swift
+          echo "=== Patched iOS AppDelegate.swift (first 30 lines) ===" && head -30 ios/Runner/AppDelegate.swift
+          echo "=== Patched iOS AppDelegate.swift (last 30 lines) ===" && tail -30 ios/Runner/AppDelegate.swift
           echo "=== Patched Xcode signing settings ===" && grep -nE "CODE_SIGN_STYLE|CODE_SIGNING_ALLOWED|CODE_SIGNING_REQUIRED|DEVELOPMENT_TEAM|PROVISIONING_PROFILE_SPECIFIER" ios/Runner.xcodeproj/project.pbxproj ios/Flutter/Release.xcconfig
 
       - name: Build (iOS IPA - no codesign)

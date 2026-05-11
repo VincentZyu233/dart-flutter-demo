@@ -10,12 +10,31 @@ for import_line in ["import Foundation", "import UIKit"]:
         text = text.replace("import Flutter", f"import Flutter\n{import_line}")
 
 if "SystemInfoPlugin.register(with:" not in text:
-    text = text.replace(
-        "GeneratedPluginRegistrant.register(with: self)",
-        "GeneratedPluginRegistrant.register(with: self)\n"
-        '    let systemInfoRegistrar = self.registrar(forPlugin: "SystemInfoPlugin")\n'
-        "    SystemInfoPlugin.register(with: systemInfoRegistrar)",
-    )
+    if "GeneratedPluginRegistrant.register(with: self)" in text:
+        # Old Flutter: add registrar-based registration after existing registration
+        text = text.replace(
+            "GeneratedPluginRegistrant.register(with: self)",
+            "GeneratedPluginRegistrant.register(with: self)\n"
+            '    let systemInfoRegistrar = self.registrar(forPlugin: "SystemInfoPlugin")\n'
+            "    SystemInfoPlugin.register(with: systemInfoRegistrar)",
+        )
+    else:
+        # New Flutter (@main): add didFinishLaunchingWithOptions override
+        registration = (
+            "\n"
+            "    override func application(\n"
+            "        _ application: UIApplication,\n"
+            "        didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?\n"
+            "    ) -> Bool {\n"
+            '        let systemInfoRegistrar = self.registrar(forPlugin: "SystemInfoPlugin")\n'
+            "        SystemInfoPlugin.register(with: systemInfoRegistrar)\n"
+            "        return super.application(application, didFinishLaunchingWithOptions: launchOptions)\n"
+            "    }\n"
+        )
+        text = text.replace(
+            "class AppDelegate: FlutterAppDelegate {",
+            "class AppDelegate: FlutterAppDelegate {" + registration,
+        )
 
 if "public class SystemInfoPlugin: NSObject, FlutterPlugin" not in text:
     plugin_text = plugin.read_text(encoding="utf-8")

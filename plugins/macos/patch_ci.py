@@ -10,11 +10,28 @@ for import_line in ["import Foundation", "import Darwin"]:
             "import FlutterMacOS", f"import FlutterMacOS\n{import_line}"
         )
 
-if "SystemInfoPlugin.register(with: self)" not in text:
-    text = text.replace(
-        "GeneratedPluginRegistrant.register(with: self)",
-        "GeneratedPluginRegistrant.register(with: self)\n    SystemInfoPlugin.register(with: self)",
-    )
+if "SystemInfoPlugin.register(with:" not in text:
+    if "GeneratedPluginRegistrant.register(with: self)" in text:
+        # Old Flutter: add registration after existing one
+        text = text.replace(
+            "GeneratedPluginRegistrant.register(with: self)",
+            "GeneratedPluginRegistrant.register(with: self)\n"
+            "    SystemInfoPlugin.register(with: self)",
+        )
+    else:
+        # New Flutter (@main): add applicationDidFinishLaunching override
+        registration = (
+            "\n"
+            "    override func applicationDidFinishLaunching(_ notification: Notification) {\n"
+            '        let systemInfoRegistrar = self.registrar(forPlugin: "SystemInfoPlugin")\n'
+            "        SystemInfoPlugin.register(with: systemInfoRegistrar)\n"
+            "        super.applicationDidFinishLaunching(notification)\n"
+            "    }\n"
+        )
+        text = text.replace(
+            "class AppDelegate: FlutterAppDelegate {",
+            "class AppDelegate: FlutterAppDelegate {" + registration,
+        )
 
 if "public class SystemInfoPlugin: NSObject, FlutterPlugin" not in text:
     plugin_text = plugin.read_text(encoding="utf-8")
