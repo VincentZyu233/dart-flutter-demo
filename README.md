@@ -63,7 +63,7 @@ GitHub Actions handles automated builds and packaging. Push a commit containing 
 ## Troubleshooting
 
 - **Linux / Windows GPU issues**: Launch with software rendering: `./dart_flutter_demo --disable-gpu`
-- **macOS virtual machines graphic issues** (VMware, VirtualBox, etc.): Flutter desktop apps require Apple Metal, which is unavailable in VMs. Use a physical Mac or GitHub Actions macOS runners instead.
+- **macOS virtual machines graphic issues** (VMware, VirtualBox, etc.): Flutter desktop apps require Apple Metal, which is unavailable in VMs. Use a physical Mac or [GitHub Actions macOS runners](https://github.com/VincentZyuApps/mac-test-action-runner) instead.
 
 ## Tech Stack
 
