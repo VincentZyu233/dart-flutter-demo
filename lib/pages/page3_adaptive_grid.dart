@@ -165,19 +165,27 @@ class _Page3AdaptiveGridState extends State<Page3AdaptiveGrid> {
     return _autoColumns ? autoBase : target;
   }
 
-  double get _gap => switch (_densityMode) {
+  _DensityMode _densityModeFromColumns(int col) => switch (col) {
+        5 => _DensityMode.five,
+        4 => _DensityMode.four,
+        3 => _DensityMode.three,
+        2 => _DensityMode.two,
+        _ => _DensityMode.one,
+      };
+
+  double _gapFor(_DensityMode density) => switch (density) {
         _DensityMode.five || _DensityMode.four => 10,
         _DensityMode.three => 14,
         _DensityMode.two || _DensityMode.one => 18,
       };
 
-  EdgeInsets get _cardPadding => switch (_densityMode) {
+  EdgeInsets _cardPaddingFor(_DensityMode density) => switch (density) {
         _DensityMode.five || _DensityMode.four => const EdgeInsets.all(10),
         _DensityMode.three => const EdgeInsets.all(14),
         _DensityMode.two || _DensityMode.one => const EdgeInsets.all(18),
       };
 
-  double get _cardRadius => switch (_densityMode) {
+  double _cardRadiusFor(_DensityMode density) => switch (density) {
         _DensityMode.five || _DensityMode.four => 12,
         _DensityMode.three => 16,
         _DensityMode.two || _DensityMode.one => 20,
@@ -193,15 +201,18 @@ class _Page3AdaptiveGridState extends State<Page3AdaptiveGrid> {
           final width = constraints.maxWidth;
           final columns = _columnCount(width);
           final filtered = _filteredRepositories;
+          final effectiveDensity = _autoColumns
+              ? _densityModeFromColumns(columns)
+              : _densityMode;
 
           return SingleChildScrollView(
             padding: const EdgeInsets.only(bottom: 24),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _buildControls(theme),
+                _buildControls(theme, width, effectiveDensity),
                 const SizedBox(height: 10),
-                _buildStateBar(theme, width, columns, filtered.length),
+                _buildStateBar(theme, width, columns, filtered.length, effectiveDensity),
                 const SizedBox(height: 10),
                 if (_error != null) _buildErrorBanner(theme),
                 const SizedBox(height: 10),
@@ -212,9 +223,9 @@ class _Page3AdaptiveGridState extends State<Page3AdaptiveGrid> {
                       : filtered.isEmpty
                           ? _buildEmptyState(key: const ValueKey('empty'))
                           : switch (_layoutMode) {
-                              _LayoutMode.grid => _buildGrid(filtered, columns, key: const ValueKey('grid')),
-                              _LayoutMode.masonry => _buildMasonry(filtered, columns, key: const ValueKey('masonry')),
-                              _LayoutMode.list => _buildList(filtered, key: const ValueKey('list')),
+                              _LayoutMode.grid => _buildGrid(filtered, columns, effectiveDensity, key: const ValueKey('grid')),
+                              _LayoutMode.masonry => _buildMasonry(filtered, columns, effectiveDensity, key: const ValueKey('masonry')),
+                              _LayoutMode.list => _buildList(filtered, effectiveDensity, key: const ValueKey('list')),
                             },
                 ),
               ],
@@ -225,7 +236,7 @@ class _Page3AdaptiveGridState extends State<Page3AdaptiveGrid> {
     );
   }
 
-  Widget _buildControls(ThemeData theme) {
+  Widget _buildControls(ThemeData theme, double width, _DensityMode effectiveDensity) {
     final compact = !_controlsExpanded;
     return Container(
       width: double.infinity,
@@ -328,8 +339,11 @@ class _Page3AdaptiveGridState extends State<Page3AdaptiveGrid> {
                     ButtonSegment(value: _DensityMode.two, label: Text('2')),
                     ButtonSegment(value: _DensityMode.one, label: Text('1')),
                   ],
-                  selected: {_densityMode},
-                  onSelectionChanged: (value) => setState(() => _densityMode = value.first),
+                  selected: {effectiveDensity},
+                  onSelectionChanged: (value) => setState(() {
+                    _densityMode = value.first;
+                    _autoColumns = false;
+                  }),
                 ),
               ],
             ),
@@ -356,7 +370,12 @@ class _Page3AdaptiveGridState extends State<Page3AdaptiveGrid> {
                   children: [
                     Switch(
                       value: _autoColumns,
-                      onChanged: (value) => setState(() => _autoColumns = value),
+                      onChanged: (value) => setState(() {
+                        _autoColumns = value;
+                        if (value) {
+                          _densityMode = _densityModeFromColumns(_columnCount(width));
+                        }
+                      }),
                     ),
                     const SizedBox(width: 6),
                     const Text('Auto columns'),
@@ -518,7 +537,7 @@ class _Page3AdaptiveGridState extends State<Page3AdaptiveGrid> {
     }
   }
 
-  Widget _buildStateBar(ThemeData theme, double width, int columns, int count) {
+  Widget _buildStateBar(ThemeData theme, double width, int columns, int count, _DensityMode density) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -531,12 +550,12 @@ class _Page3AdaptiveGridState extends State<Page3AdaptiveGrid> {
         runSpacing: 8,
         children: [
           Text('Current columns: $columns'),
-          Text('Gap: ${_gap.toStringAsFixed(0)}'),
+          Text('Gap: ${_gapFor(density).toStringAsFixed(0)}'),
           Text('Width: ${width.round()}px'),
           Text('Range: ${_widthBucket(width)}'),
           Text('Layout: ${_layoutMode.name}'),
           Text(_autoColumns ? 'Adaptive columns: on' : 'Adaptive columns: off'),
-          Text('Target columns: ${switch (_densityMode) {
+          Text('Target columns: ${switch (density) {
             _DensityMode.five => 5,
             _DensityMode.four => 4,
             _DensityMode.three => 3,
@@ -585,31 +604,33 @@ class _Page3AdaptiveGridState extends State<Page3AdaptiveGrid> {
     );
   }
 
-  Widget _buildGrid(List<GitHubRepositoryItem> items, int columns, {Key? key}) {
+  Widget _buildGrid(List<GitHubRepositoryItem> items, int columns, _DensityMode density, {Key? key}) {
+    final gap = _gapFor(density);
     return GridView.builder(
       key: key,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      padding: EdgeInsets.all(_gap),
+      padding: EdgeInsets.all(gap),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: columns,
-        crossAxisSpacing: _gap,
-        mainAxisSpacing: _gap,
+        crossAxisSpacing: gap,
+        mainAxisSpacing: gap,
         childAspectRatio: columns >= 4 ? 2.9 : 2.5,
       ),
       itemCount: items.length,
       itemBuilder: (context, index) => _RepositoryCard(
         repository: items[index],
-        density: _densityMode,
-        padding: _cardPadding,
-        radius: _cardRadius,
+        density: density,
+        padding: _cardPaddingFor(density),
+        radius: _cardRadiusFor(density),
         delayMs: 30 * index,
         onOpen: () => _openRepository(items[index].htmlUrl),
       ),
     );
   }
 
-  Widget _buildMasonry(List<GitHubRepositoryItem> items, int columns, {Key? key}) {
+  Widget _buildMasonry(List<GitHubRepositoryItem> items, int columns, _DensityMode density, {Key? key}) {
+    final gap = _gapFor(density);
     final buckets = List.generate(columns, (_) => <GitHubRepositoryItem>[]);
     for (var i = 0; i < items.length; i++) {
       buckets[i % columns].add(items[i]);
@@ -617,26 +638,26 @@ class _Page3AdaptiveGridState extends State<Page3AdaptiveGrid> {
 
     return Padding(
       key: key,
-      padding: EdgeInsets.all(_gap),
+      padding: EdgeInsets.all(gap),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: List.generate(columns, (columnIndex) {
           final columnItems = buckets[columnIndex];
           return Expanded(
             child: Padding(
-              padding: EdgeInsets.only(right: columnIndex == columns - 1 ? 0 : _gap),
+              padding: EdgeInsets.only(right: columnIndex == columns - 1 ? 0 : gap),
               child: Column(
                 children: [
                   for (var i = 0; i < columnItems.length; i++) ...[
                     _RepositoryCard(
                       repository: columnItems[i],
-                      density: _densityMode,
-                      padding: _cardPadding,
-                      radius: _cardRadius,
+                      density: density,
+                      padding: _cardPaddingFor(density),
+                      radius: _cardRadiusFor(density),
                       delayMs: 35 * (columnIndex + i),
                       onOpen: () => _openRepository(columnItems[i].htmlUrl),
                     ),
-                    SizedBox(height: _gap),
+                    SizedBox(height: gap),
                   ],
                 ],
               ),
@@ -647,17 +668,18 @@ class _Page3AdaptiveGridState extends State<Page3AdaptiveGrid> {
     );
   }
 
-  Widget _buildList(List<GitHubRepositoryItem> items, {Key? key}) {
+  Widget _buildList(List<GitHubRepositoryItem> items, _DensityMode density, {Key? key}) {
+    final gap = _gapFor(density);
     return ListView.separated(
       key: key,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      padding: EdgeInsets.all(_gap),
+      padding: EdgeInsets.all(gap),
       itemCount: items.length,
-      separatorBuilder: (_, __) => SizedBox(height: _gap),
+      separatorBuilder: (_, __) => SizedBox(height: gap),
       itemBuilder: (context, index) => _RepositoryListTile(
         repository: items[index],
-        density: _densityMode,
+        density: density,
         delayMs: 25 * index,
         onOpen: () => _openRepository(items[index].htmlUrl),
       ),
