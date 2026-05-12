@@ -89,7 +89,10 @@ public class SystemInfoPlugin: NSObject, FlutterPlugin {
         }
         if result == KERN_SUCCESS {
             let pageSize = vm_page_size
-            let used = UInt64(stats.active_count + stats.wired_count + stats.inactive_count) * UInt64(pageSize)
+            let freePages = UInt64(stats.free_count > stats.speculative_count ? stats.free_count - stats.speculative_count : 0)
+            let fileBackedPages = UInt64(stats.external_page_count)
+            let cached = (freePages + fileBackedPages) * UInt64(pageSize)
+            let used = total > cached ? total - cached : 0
             let usedGiB = Double(used) / (1024.0 * 1024.0 * 1024.0)
             let pct = total > 0 ? Int((Double(used) / Double(total)) * 100) : 0
             return String(format: "%.2f GiB / %.2f GiB (%d%%)", usedGiB, totalGiB, pct)
