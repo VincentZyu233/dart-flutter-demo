@@ -168,19 +168,42 @@ static std::string GetOSVersion() {
   osvi.dwOSVersionInfoSize = sizeof(osvi);
   if (rtlGetVersion(&osvi) != 0) return "Windows (unknown version)";
 
+  // BrandingFormatString is the official Windows API to get the correct
+  // product name (e.g. "Windows 11 IoT Enterprise LTSC" on actual Win11).
+  // It's available since Windows 10 build 10240 (shell32.dll).
   std::string edition = "Windows";
   std::string displayVersion;
+  using BrandingFormatString_t = PWSTR(WINAPI*)(PCWSTR);
+  auto branding = (BrandingFormatString_t)GetProcAddress(
+      GetModuleHandleW(L"shell32.dll"), "BrandingFormatString");
+  if (branding) {
+    PWSTR rawName = branding(L"%WINDOWS_LONG%");
+    if (rawName && *rawName) {
+      edition = WStringToString(rawName);
+    }
+    GlobalFree(rawName);
+  } else {
+    // Fallback: read ProductName from registry (old Windows or PE)
+    HKEY hKey;
+    if (RegOpenKeyExW(HKEY_LOCAL_MACHINE,
+        L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion", 0,
+        KEY_READ, &hKey) == ERROR_SUCCESS) {
+      wchar_t buf[256] = {};
+      DWORD size = sizeof(buf);
+      if (RegQueryValueExW(hKey, L"ProductName", nullptr, nullptr,
+                           (LPBYTE)buf, &size) == ERROR_SUCCESS) {
+        edition = WStringToString(buf);
+      }
+      RegCloseKey(hKey);
+    }
+  }
+  // DisplayVersion is always read from registry
   HKEY hKey;
   if (RegOpenKeyExW(HKEY_LOCAL_MACHINE,
       L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion", 0,
       KEY_READ, &hKey) == ERROR_SUCCESS) {
     wchar_t buf[256] = {};
     DWORD size = sizeof(buf);
-    if (RegQueryValueExW(hKey, L"ProductName", nullptr, nullptr,
-                         (LPBYTE)buf, &size) == ERROR_SUCCESS) {
-      edition = WStringToString(buf);
-    }
-    size = sizeof(buf);
     if (RegQueryValueExW(hKey, L"DisplayVersion", nullptr, nullptr,
                          (LPBYTE)buf, &size) == ERROR_SUCCESS) {
       displayVersion = WStringToString(buf);

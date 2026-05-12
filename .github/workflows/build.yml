@@ -198,6 +198,9 @@ jobs:
       - name: Build & package Linux (deb + AppImage)
         if: matrix.platform == 'linux-x64'
         run: |
+          echo "libstdc++.so.6" > /tmp/appimage_exclude.txt
+          echo "libgcc_s.so.1" >> /tmp/appimage_exclude.txt
+          APPIMAGETOOL_EXCLUDE_FILE=/tmp/appimage_exclude.txt \
           flutter_distributor package \
             --skip-clean \
             --platform linux \

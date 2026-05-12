@@ -525,6 +525,10 @@ class _WindowsSystemInfo implements SystemInfoService {
 
       final decoded = jsonDecode(jsonStr) as Map<String, dynamic>;
       final result = decoded.map((k, v) => MapEntry(k, v.toString()));
+      result['OS'] = _normalizeWindowsOsLabel(
+        result['OS'] ?? '',
+        kernel: result['Kernel'],
+      );
       result['Locale'] = _normalizeWindowsLocale(result['Locale']);
       for (final entry in result.entries) {
         onField?.call(entry.key, entry.value);
@@ -550,6 +554,10 @@ class _WindowsSystemInfo implements SystemInfoService {
       'Local IP': 'unavailable',
       'Locale': _normalizeWindowsLocale(Platform.localeName),
     };
+    result['OS'] = _normalizeWindowsOsLabel(
+      result['OS'] ?? '',
+      kernel: result['Kernel'],
+    );
 
     final state = _WindowsFallbackState(debug, result, onField: onField);
     for (final entry in result.entries) {
@@ -1061,6 +1069,35 @@ Write-Output "NET|$($ip.IPAddress)"
       return trimmed;
     }
     return trimmed.isNotEmpty ? trimmed : 'unknown';
+  }
+
+  static String _normalizeWindowsOsLabel(String os, {String? kernel}) {
+    final trimmed = os.trim();
+    if (trimmed.isEmpty || !trimmed.contains('Windows 10')) return trimmed;
+
+    final build =
+        _extractWindowsBuildNumber(kernel) ?? _extractWindowsBuildNumber(trimmed);
+    if (build == null || build < 22000) return trimmed;
+
+    return trimmed.replaceFirst('Windows 10', 'Windows 11');
+  }
+
+  static int? _extractWindowsBuildNumber(String? text) {
+    final value = text?.trim() ?? '';
+    if (value.isEmpty) return null;
+
+    final dotted = RegExp(r'(\d+)\.(\d+)\.(\d+)').firstMatch(value);
+    if (dotted != null) {
+      return int.tryParse(dotted.group(3)!);
+    }
+
+    final buildTagged =
+        RegExp(r'Build\s+(\d+)', caseSensitive: false).firstMatch(value);
+    if (buildTagged != null) {
+      return int.tryParse(buildTagged.group(1)!);
+    }
+
+    return null;
   }
 
   static String _clipDebugText(String value, {int maxChars = 2000}) {
