@@ -78,8 +78,22 @@ public class SystemInfoPlugin: NSObject, FlutterPlugin {
     }
 
     private func getMemory() -> String {
-        let physicalMemory = ProcessInfo.processInfo.physicalMemory
-        let totalGiB = Double(physicalMemory) / (1024.0 * 1024.0 * 1024.0)
+        let total = ProcessInfo.processInfo.physicalMemory
+        let totalGiB = Double(total) / (1024.0 * 1024.0 * 1024.0)
+        var stats = vm_statistics64()
+        var count = mach_msg_type_number_t(MemoryLayout<vm_statistics64_data_t>.size / MemoryLayout<integer_t>.size)
+        let result = withUnsafeMutablePointer(to: &stats) {
+            $0.withMemoryRebound(to: integer_t.self, capacity: Int(count)) {
+                host_statistics64(mach_host_self(), HOST_VM_INFO64, $0, &count)
+            }
+        }
+        if result == KERN_SUCCESS {
+            let pageSize = vm_page_size
+            let used = UInt64(stats.active_count + stats.wired_count + stats.inactive_count) * UInt64(pageSize)
+            let usedGiB = Double(used) / (1024.0 * 1024.0 * 1024.0)
+            let pct = total > 0 ? Int((Double(used) / Double(total)) * 100) : 0
+            return String(format: "%.2f GiB / %.2f GiB (%d%%)", usedGiB, totalGiB, pct)
+        }
         return String(format: "%.2f GiB total", totalGiB)
     }
 
