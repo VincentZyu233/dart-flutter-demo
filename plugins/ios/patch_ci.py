@@ -42,7 +42,7 @@ if "didInitializeImplicitFlutterEngine" in text:
         text = text.replace(
             "GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)",
             "GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)\n"
-            '        SystemInfoPlugin.register(with: engineBridge.pluginRegistry.registrar(forPlugin: "SystemInfoPlugin"))',
+            '        SystemInfoPlugin.register(with: engineBridge.pluginRegistry.registrar(forPlugin: "SystemInfoPlugin")!)',
         )
 elif "GeneratedPluginRegistrant.register(with: self)" in text:
     # Old Flutter template: add registration after existing one
