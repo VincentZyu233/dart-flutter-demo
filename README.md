@@ -56,6 +56,10 @@ Source: [lib/pages/page0_system_info.dart](https://github.com/VincentZyu233/dart
       <td align="center"><sub>Android 15</sub><br><img src="doc/preview-pics/page0.android15.png" width="100%"/></td>
       <td align="center"><sub>Android 15</sub><br><img src="doc/preview-pics/fastfetch.android15.termux.png" width="100%"/></td>
     </tr>
+    <tr>
+      <td align="center"><sub>iOS 17 (iPad Air 5)</sub><br><img src="doc/preview-pics/page0.ios17.png" width="100%"/></td>
+      <td align="center"><sub>iOS 17 (iSH)</sub><br><img src="doc/preview-pics/fastfetch.ios17.iSH.png" width="100%"/></td>
+    </tr>
   </tbody>
 </table>
 </div>
