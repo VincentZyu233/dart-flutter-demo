@@ -1,0 +1,12 @@
+# Keep GitHub Linguist focused on source code rather than docs and preview assets.
+*.md linguist-generated
+doc/** linguist-generated
+assets/images/** linguist-generated
+
+# Exclude workflow docs and helper config from language percentages.
+.github/** linguist-generated
+*.yml linguist-generated
+*.yaml linguist-generated
+
+# Keep shell helpers out of the language bar so small source files surface sooner.
+*.sh linguist-generated

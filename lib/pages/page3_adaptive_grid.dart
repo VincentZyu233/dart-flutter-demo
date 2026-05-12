@@ -1,14 +1,12 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../models/page3_enums.dart';
 import '../services/github_repository_service.dart';
 import '../widgets/animated_page.dart';
-
-enum _LayoutMode { grid, masonry, list }
-enum _DensityMode { five, four, three, two, one }
-enum _SortMode { updated, stars, name }
+import '../widgets/repository_card.dart';
+import '../widgets/repository_list_tile.dart';
+import '../widgets/state_shell.dart';
 
 class Page3AdaptiveGrid extends StatefulWidget {
   const Page3AdaptiveGrid({super.key});
@@ -28,12 +26,13 @@ class _Page3AdaptiveGridState extends State<Page3AdaptiveGrid> {
   final _proxyController = TextEditingController(text: 'http://127.0.0.1:7890');
   final List<TextEditingController> _sourceControllers = [];
 
-  _LayoutMode _layoutMode = _LayoutMode.masonry;
-  _DensityMode _densityMode = _DensityMode.three;
-  _SortMode _sortMode = _SortMode.updated;
+  LayoutMode _layoutMode = LayoutMode.masonry;
+  DensityMode _densityMode = DensityMode.three;
+  SortMode _sortMode = SortMode.updated;
   bool _useProxy = false;
   bool _controlsExpanded = false;
   bool _autoColumns = true;
+  bool _animateTransitions = true;
 
   bool _loading = false;
   String? _error;
@@ -117,10 +116,10 @@ class _Page3AdaptiveGridState extends State<Page3AdaptiveGrid> {
     final sorted = [...items];
     sorted.sort((a, b) {
       return switch (_sortMode) {
-        _SortMode.updated => (b.updatedAt ?? DateTime.fromMillisecondsSinceEpoch(0))
+        SortMode.updated => (b.updatedAt ?? DateTime.fromMillisecondsSinceEpoch(0))
             .compareTo(a.updatedAt ?? DateTime.fromMillisecondsSinceEpoch(0)),
-        _SortMode.stars => b.stars.compareTo(a.stars),
-        _SortMode.name => a.fullName.toLowerCase().compareTo(b.fullName.toLowerCase()),
+        SortMode.stars => b.stars.compareTo(a.stars),
+        SortMode.name => a.fullName.toLowerCase().compareTo(b.fullName.toLowerCase()),
       };
     });
     return sorted;
@@ -155,41 +154,9 @@ class _Page3AdaptiveGridState extends State<Page3AdaptiveGrid> {
                 : width < 1440
                     ? 4
                     : 5;
-    final target = switch (_densityMode) {
-      _DensityMode.five => 5,
-      _DensityMode.four => 4,
-      _DensityMode.three => 3,
-      _DensityMode.two => 2,
-      _DensityMode.one => 1,
-    };
+    final target = _densityMode.columnCount;
     return _autoColumns ? autoBase : target;
   }
-
-  _DensityMode _densityModeFromColumns(int col) => switch (col) {
-        5 => _DensityMode.five,
-        4 => _DensityMode.four,
-        3 => _DensityMode.three,
-        2 => _DensityMode.two,
-        _ => _DensityMode.one,
-      };
-
-  double _gapFor(_DensityMode density) => switch (density) {
-        _DensityMode.five || _DensityMode.four => 10,
-        _DensityMode.three => 14,
-        _DensityMode.two || _DensityMode.one => 18,
-      };
-
-  EdgeInsets _cardPaddingFor(_DensityMode density) => switch (density) {
-        _DensityMode.five || _DensityMode.four => const EdgeInsets.all(10),
-        _DensityMode.three => const EdgeInsets.all(14),
-        _DensityMode.two || _DensityMode.one => const EdgeInsets.all(18),
-      };
-
-  double _cardRadiusFor(_DensityMode density) => switch (density) {
-        _DensityMode.five || _DensityMode.four => 12,
-        _DensityMode.three => 16,
-        _DensityMode.two || _DensityMode.one => 20,
-      };
 
   @override
   Widget build(BuildContext context) {
@@ -202,7 +169,7 @@ class _Page3AdaptiveGridState extends State<Page3AdaptiveGrid> {
           final columns = _columnCount(width);
           final filtered = _filteredRepositories;
           final effectiveDensity = _autoColumns
-              ? _densityModeFromColumns(columns)
+              ? DensityMode.fromColumnCount(columns)
               : _densityMode;
 
           return SingleChildScrollView(
@@ -217,15 +184,29 @@ class _Page3AdaptiveGridState extends State<Page3AdaptiveGrid> {
                 if (_error != null) _buildErrorBanner(theme),
                 const SizedBox(height: 10),
                 AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 220),
+                  duration: _animateTransitions
+                      ? const Duration(milliseconds: 220)
+                      : Duration.zero,
+                  transitionBuilder: _animateTransitions
+                      ? _animatedTransitionBuilder
+                      : AnimatedSwitcher.defaultTransitionBuilder,
                   child: _loading
                       ? _buildLoadingState(key: const ValueKey('loading'))
                       : filtered.isEmpty
                           ? _buildEmptyState(key: const ValueKey('empty'))
                           : switch (_layoutMode) {
-                              _LayoutMode.grid => _buildGrid(filtered, columns, effectiveDensity, key: const ValueKey('grid')),
-                              _LayoutMode.masonry => _buildMasonry(filtered, columns, effectiveDensity, key: const ValueKey('masonry')),
-                              _LayoutMode.list => _buildList(filtered, effectiveDensity, key: const ValueKey('list')),
+                              LayoutMode.grid => _buildGrid(
+                                  filtered, columns, effectiveDensity,
+                                  key: ValueKey(_animateTransitions ? 'grid-$columns' : 'grid'),
+                                ),
+                              LayoutMode.masonry => _buildMasonry(
+                                  filtered, columns, effectiveDensity,
+                                  key: ValueKey(_animateTransitions ? 'masonry-$columns' : 'masonry'),
+                                ),
+                              LayoutMode.list => _buildList(
+                                  filtered, effectiveDensity,
+                                  key: ValueKey(_animateTransitions ? 'list-$columns' : 'list'),
+                                ),
                             },
                 ),
               ],
@@ -236,7 +217,19 @@ class _Page3AdaptiveGridState extends State<Page3AdaptiveGrid> {
     );
   }
 
-  Widget _buildControls(ThemeData theme, double width, _DensityMode effectiveDensity) {
+  static Widget _animatedTransitionBuilder(Widget child, Animation<double> animation) {
+    return FadeTransition(
+      opacity: animation,
+      child: ScaleTransition(
+        scale: Tween<double>(begin: 0.92, end: 1.0).animate(
+          CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
+        ),
+        child: child,
+      ),
+    );
+  }
+
+  Widget _buildControls(ThemeData theme, double width, DensityMode effectiveDensity) {
     final compact = !_controlsExpanded;
     return Container(
       width: double.infinity,
@@ -322,22 +315,22 @@ class _Page3AdaptiveGridState extends State<Page3AdaptiveGrid> {
                     ],
                   ),
                 ),
-                SegmentedButton<_LayoutMode>(
+                SegmentedButton<LayoutMode>(
                   segments: const [
-                    ButtonSegment(value: _LayoutMode.grid, label: Text('Grid'), icon: Icon(Icons.grid_view_rounded)),
-                    ButtonSegment(value: _LayoutMode.masonry, label: Text('Masonry'), icon: Icon(Icons.view_week_rounded)),
-                    ButtonSegment(value: _LayoutMode.list, label: Text('List'), icon: Icon(Icons.view_agenda_rounded)),
+                    ButtonSegment(value: LayoutMode.grid, label: Text('Grid'), icon: Icon(Icons.grid_view_rounded)),
+                    ButtonSegment(value: LayoutMode.masonry, label: Text('Masonry'), icon: Icon(Icons.view_week_rounded)),
+                    ButtonSegment(value: LayoutMode.list, label: Text('List'), icon: Icon(Icons.view_agenda_rounded)),
                   ],
                   selected: {_layoutMode},
                   onSelectionChanged: (value) => setState(() => _layoutMode = value.first),
                 ),
-                SegmentedButton<_DensityMode>(
+                SegmentedButton<DensityMode>(
                   segments: const [
-                    ButtonSegment(value: _DensityMode.five, label: Text('5')),
-                    ButtonSegment(value: _DensityMode.four, label: Text('4')),
-                    ButtonSegment(value: _DensityMode.three, label: Text('3')),
-                    ButtonSegment(value: _DensityMode.two, label: Text('2')),
-                    ButtonSegment(value: _DensityMode.one, label: Text('1')),
+                    ButtonSegment(value: DensityMode.five, label: Text('5')),
+                    ButtonSegment(value: DensityMode.four, label: Text('4')),
+                    ButtonSegment(value: DensityMode.three, label: Text('3')),
+                    ButtonSegment(value: DensityMode.two, label: Text('2')),
+                    ButtonSegment(value: DensityMode.one, label: Text('1')),
                   ],
                   selected: {effectiveDensity},
                   onSelectionChanged: (value) => setState(() {
@@ -353,12 +346,12 @@ class _Page3AdaptiveGridState extends State<Page3AdaptiveGrid> {
               runSpacing: 8,
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-                DropdownButton<_SortMode>(
+                DropdownButton<SortMode>(
                   value: _sortMode,
                   items: const [
-                    DropdownMenuItem(value: _SortMode.updated, child: Text('Sort: Updated')),
-                    DropdownMenuItem(value: _SortMode.stars, child: Text('Sort: Stars')),
-                    DropdownMenuItem(value: _SortMode.name, child: Text('Sort: Name')),
+                    DropdownMenuItem(value: SortMode.updated, child: Text('Sort: Updated')),
+                    DropdownMenuItem(value: SortMode.stars, child: Text('Sort: Stars')),
+                    DropdownMenuItem(value: SortMode.name, child: Text('Sort: Name')),
                   ],
                   onChanged: (value) {
                     if (value == null) return;
@@ -373,12 +366,23 @@ class _Page3AdaptiveGridState extends State<Page3AdaptiveGrid> {
                       onChanged: (value) => setState(() {
                         _autoColumns = value;
                         if (value) {
-                          _densityMode = _densityModeFromColumns(_columnCount(width));
+                          _densityMode = DensityMode.fromColumnCount(_columnCount(width));
                         }
                       }),
                     ),
                     const SizedBox(width: 6),
                     const Text('Auto columns'),
+                  ],
+                ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Switch(
+                      value: _animateTransitions,
+                      onChanged: (value) => setState(() => _animateTransitions = value),
+                    ),
+                    const SizedBox(width: 6),
+                    const Text('Animate transitions'),
                   ],
                 ),
                 SizedBox(
@@ -537,7 +541,7 @@ class _Page3AdaptiveGridState extends State<Page3AdaptiveGrid> {
     }
   }
 
-  Widget _buildStateBar(ThemeData theme, double width, int columns, int count, _DensityMode density) {
+  Widget _buildStateBar(ThemeData theme, double width, int columns, int count, DensityMode density) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -550,18 +554,12 @@ class _Page3AdaptiveGridState extends State<Page3AdaptiveGrid> {
         runSpacing: 8,
         children: [
           Text('Current columns: $columns'),
-          Text('Gap: ${_gapFor(density).toStringAsFixed(0)}'),
+          Text('Gap: ${density.gap.toStringAsFixed(0)}'),
           Text('Width: ${width.round()}px'),
           Text('Range: ${_widthBucket(width)}'),
           Text('Layout: ${_layoutMode.name}'),
           Text(_autoColumns ? 'Adaptive columns: on' : 'Adaptive columns: off'),
-          Text('Target columns: ${switch (density) {
-            _DensityMode.five => 5,
-            _DensityMode.four => 4,
-            _DensityMode.three => 3,
-            _DensityMode.two => 2,
-            _DensityMode.one => 1,
-          }}'),
+          Text('Target columns: ${density.columnCount}'),
           Text('Repos: $count'),
           Text(_status),
         ],
@@ -585,7 +583,7 @@ class _Page3AdaptiveGridState extends State<Page3AdaptiveGrid> {
   }
 
   Widget _buildLoadingState({Key? key}) {
-    return _StateShell(
+    return StateShell(
       key: key,
       icon: Icons.cloud_download_outlined,
       title: 'Loading repositories',
@@ -595,7 +593,7 @@ class _Page3AdaptiveGridState extends State<Page3AdaptiveGrid> {
   }
 
   Widget _buildEmptyState({Key? key}) {
-    return _StateShell(
+    return StateShell(
       key: key,
       icon: Icons.inbox_outlined,
       title: 'No repositories to show',
@@ -604,8 +602,8 @@ class _Page3AdaptiveGridState extends State<Page3AdaptiveGrid> {
     );
   }
 
-  Widget _buildGrid(List<GitHubRepositoryItem> items, int columns, _DensityMode density, {Key? key}) {
-    final gap = _gapFor(density);
+  Widget _buildGrid(List<GitHubRepositoryItem> items, int columns, DensityMode density, {Key? key}) {
+    final gap = density.gap;
     return GridView.builder(
       key: key,
       shrinkWrap: true,
@@ -618,19 +616,19 @@ class _Page3AdaptiveGridState extends State<Page3AdaptiveGrid> {
         childAspectRatio: columns >= 4 ? 2.9 : 2.5,
       ),
       itemCount: items.length,
-      itemBuilder: (context, index) => _RepositoryCard(
+      itemBuilder: (context, index) => RepositoryCard(
         repository: items[index],
         density: density,
-        padding: _cardPaddingFor(density),
-        radius: _cardRadiusFor(density),
+        padding: density.cardPadding,
+        radius: density.cardRadius,
         delayMs: 30 * index,
         onOpen: () => _openRepository(items[index].htmlUrl),
       ),
     );
   }
 
-  Widget _buildMasonry(List<GitHubRepositoryItem> items, int columns, _DensityMode density, {Key? key}) {
-    final gap = _gapFor(density);
+  Widget _buildMasonry(List<GitHubRepositoryItem> items, int columns, DensityMode density, {Key? key}) {
+    final gap = density.gap;
     final buckets = List.generate(columns, (_) => <GitHubRepositoryItem>[]);
     for (var i = 0; i < items.length; i++) {
       buckets[i % columns].add(items[i]);
@@ -649,11 +647,11 @@ class _Page3AdaptiveGridState extends State<Page3AdaptiveGrid> {
               child: Column(
                 children: [
                   for (var i = 0; i < columnItems.length; i++) ...[
-                    _RepositoryCard(
+                    RepositoryCard(
                       repository: columnItems[i],
                       density: density,
-                      padding: _cardPaddingFor(density),
-                      radius: _cardRadiusFor(density),
+                      padding: density.cardPadding,
+                      radius: density.cardRadius,
                       delayMs: 35 * (columnIndex + i),
                       onOpen: () => _openRepository(columnItems[i].htmlUrl),
                     ),
@@ -668,8 +666,8 @@ class _Page3AdaptiveGridState extends State<Page3AdaptiveGrid> {
     );
   }
 
-  Widget _buildList(List<GitHubRepositoryItem> items, _DensityMode density, {Key? key}) {
-    final gap = _gapFor(density);
+  Widget _buildList(List<GitHubRepositoryItem> items, DensityMode density, {Key? key}) {
+    final gap = density.gap;
     return ListView.separated(
       key: key,
       shrinkWrap: true,
@@ -677,7 +675,7 @@ class _Page3AdaptiveGridState extends State<Page3AdaptiveGrid> {
       padding: EdgeInsets.all(gap),
       itemCount: items.length,
       separatorBuilder: (_, __) => SizedBox(height: gap),
-      itemBuilder: (context, index) => _RepositoryListTile(
+      itemBuilder: (context, index) => RepositoryListTile(
         repository: items[index],
         density: density,
         delayMs: 25 * index,
@@ -690,269 +688,5 @@ class _Page3AdaptiveGridState extends State<Page3AdaptiveGrid> {
     final uri = Uri.tryParse(url);
     if (uri == null) return;
     await launchUrl(uri, mode: LaunchMode.externalApplication);
-  }
-}
-
-class _RepositoryCard extends StatefulWidget {
-  final GitHubRepositoryItem repository;
-  final _DensityMode density;
-  final EdgeInsets padding;
-  final double radius;
-  final int delayMs;
-  final VoidCallback onOpen;
-
-  const _RepositoryCard({
-    required this.repository,
-    required this.density,
-    required this.padding,
-    required this.radius,
-    required this.delayMs,
-    required this.onOpen,
-  });
-
-  @override
-  State<_RepositoryCard> createState() => _RepositoryCardState();
-}
-
-class _RepositoryCardState extends State<_RepositoryCard> {
-  bool _hovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final repo = widget.repository;
-    final scale = _hovered ? 1.02 : 1.0;
-
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0, end: 1),
-      duration: Duration(milliseconds: 250 + widget.delayMs),
-      curve: Curves.easeOutCubic,
-      builder: (context, value, child) {
-        return Opacity(
-          opacity: value,
-          child: Transform.translate(
-            offset: Offset(0, (1 - value) * 12),
-            child: child,
-          ),
-        );
-      },
-      child: MouseRegion(
-        onEnter: (_) => setState(() => _hovered = true),
-        onExit: (_) => setState(() => _hovered = false),
-        child: AnimatedScale(
-          scale: scale,
-          duration: const Duration(milliseconds: 140),
-          curve: Curves.easeOut,
-          child: Material(
-            color: theme.colorScheme.surface,
-            borderRadius: BorderRadius.circular(widget.radius),
-            elevation: _hovered ? 4 : 1,
-            child: InkWell(
-              borderRadius: BorderRadius.circular(widget.radius),
-              onTap: widget.onOpen,
-              child: Container(
-                padding: widget.padding,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(widget.radius),
-                  border: Border.all(color: theme.colorScheme.outlineVariant),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        CircleAvatar(
-                          radius: 16,
-                          backgroundImage: NetworkImage(repo.ownerAvatarUrl),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                repo.name,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: theme.textTheme.titleSmall?.copyWith(
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                              Text(
-                                repo.source.label,
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: theme.colorScheme.onSurfaceVariant,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      repo.description?.isNotEmpty == true
-                          ? repo.description!
-                          : 'No description provided.',
-                      maxLines: widget.density == _DensityMode.one ? 4 : 3,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 10),
-                    Wrap(
-                      spacing: 6,
-                      runSpacing: 6,
-                      children: [
-                        _Tag(text: repo.fullName),
-                        if (repo.language != null && repo.language!.isNotEmpty) _Tag(text: repo.language!),
-                        _Tag(text: '★ ${repo.stars}'),
-                        _Tag(text: '⑂ ${repo.forks}'),
-                        if (repo.archived) const _Tag(text: 'Archived'),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _RepositoryListTile extends StatefulWidget {
-  final GitHubRepositoryItem repository;
-  final _DensityMode density;
-  final int delayMs;
-  final VoidCallback onOpen;
-
-  const _RepositoryListTile({
-    required this.repository,
-    required this.density,
-    required this.delayMs,
-    required this.onOpen,
-  });
-
-  @override
-  State<_RepositoryListTile> createState() => _RepositoryListTileState();
-}
-
-class _RepositoryListTileState extends State<_RepositoryListTile> {
-  bool _hovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final repo = widget.repository;
-
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0, end: 1),
-      duration: Duration(milliseconds: 240 + widget.delayMs),
-      curve: Curves.easeOutCubic,
-      builder: (context, value, child) {
-        return Opacity(
-          opacity: value,
-          child: Transform.translate(
-            offset: Offset(0, (1 - value) * 10),
-            child: child,
-          ),
-        );
-      },
-      child: MouseRegion(
-        onEnter: (_) => setState(() => _hovered = true),
-        onExit: (_) => setState(() => _hovered = false),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 160),
-          curve: Curves.easeOut,
-          decoration: BoxDecoration(
-            color: _hovered ? theme.colorScheme.surfaceContainerHighest : theme.colorScheme.surface,
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: theme.colorScheme.outlineVariant),
-          ),
-          child: ListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            onTap: widget.onOpen,
-            leading: CircleAvatar(
-              backgroundImage: NetworkImage(repo.ownerAvatarUrl),
-            ),
-            title: Text(
-              repo.fullName,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-              subtitle: Text(
-                repo.description?.isNotEmpty == true ? repo.description! : 'No description provided.',
-                maxLines: widget.density == _DensityMode.one || widget.density == _DensityMode.two ? 3 : 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-            trailing: Wrap(
-              spacing: 6,
-              children: [
-                _Tag(text: '★ ${repo.stars}'),
-                _Tag(text: repo.language ?? 'n/a'),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _Tag extends StatelessWidget {
-  final String text;
-
-  const _Tag({required this.text});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.secondaryContainer,
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        text,
-        style: theme.textTheme.labelSmall?.copyWith(
-          color: theme.colorScheme.onSecondaryContainer,
-        ),
-      ),
-    );
-  }
-}
-
-class _StateShell extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final Widget child;
-
-  const _StateShell({
-    super.key,
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.child,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, size: 44, color: theme.colorScheme.primary),
-          const SizedBox(height: 12),
-          Text(title, style: theme.textTheme.titleMedium),
-          const SizedBox(height: 4),
-          Text(subtitle, style: theme.textTheme.bodySmall),
-          const SizedBox(height: 16),
-          child,
-        ],
-      ),
-    );
   }
 }
