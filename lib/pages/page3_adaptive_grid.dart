@@ -184,30 +184,37 @@ class _Page3AdaptiveGridState extends State<Page3AdaptiveGrid> {
                 if (_error != null) _buildErrorBanner(theme),
                 const SizedBox(height: 10),
                 AnimatedSwitcher(
-                  duration: _animateTransitions
-                      ? const Duration(milliseconds: 220)
-                      : Duration.zero,
-                  transitionBuilder: _animateTransitions
-                      ? _animatedTransitionBuilder
-                      : AnimatedSwitcher.defaultTransitionBuilder,
+                  duration: const Duration(milliseconds: 300),
+                  transitionBuilder: _animatedTransitionBuilder,
                   child: _loading
                       ? _buildLoadingState(key: const ValueKey('loading'))
                       : filtered.isEmpty
                           ? _buildEmptyState(key: const ValueKey('empty'))
-                          : switch (_layoutMode) {
-                              LayoutMode.grid => _buildGrid(
-                                  filtered, columns, effectiveDensity,
-                                  key: ValueKey(_animateTransitions ? 'grid-$columns' : 'grid'),
-                                ),
-                              LayoutMode.masonry => _buildMasonry(
-                                  filtered, columns, effectiveDensity,
-                                  key: ValueKey(_animateTransitions ? 'masonry-$columns' : 'masonry'),
-                                ),
-                              LayoutMode.list => _buildList(
-                                  filtered, effectiveDensity,
-                                  key: ValueKey(_animateTransitions ? 'list-$columns' : 'list'),
-                                ),
-                            },
+                          : SizedBox(
+                              key: const ValueKey('content'),
+                              child: AnimatedSwitcher(
+                                duration: _animateTransitions
+                                    ? const Duration(milliseconds: 500)
+                                    : Duration.zero,
+                                transitionBuilder: _animateTransitions
+                                    ? _animatedTransitionBuilder
+                                    : AnimatedSwitcher.defaultTransitionBuilder,
+                                child: switch (_layoutMode) {
+                                  LayoutMode.grid => _buildGrid(
+                                      filtered, columns, effectiveDensity,
+                                      key: ValueKey(_animateTransitions ? 'grid-$columns' : 'grid'),
+                                    ),
+                                  LayoutMode.masonry => _buildMasonry(
+                                      filtered, columns, effectiveDensity,
+                                      key: ValueKey(_animateTransitions ? 'masonry-$columns' : 'masonry'),
+                                    ),
+                                  LayoutMode.list => _buildList(
+                                      filtered, effectiveDensity,
+                                      key: ValueKey(_animateTransitions ? 'list-$columns' : 'list'),
+                                    ),
+                                },
+                              ),
+                            ),
                 ),
               ],
             ),
@@ -613,7 +620,7 @@ class _Page3AdaptiveGridState extends State<Page3AdaptiveGrid> {
         crossAxisCount: columns,
         crossAxisSpacing: gap,
         mainAxisSpacing: gap,
-        childAspectRatio: columns >= 4 ? 2.9 : 2.5,
+        childAspectRatio: columns >= 4 ? 2.2 : 1.9,
       ),
       itemCount: items.length,
       itemBuilder: (context, index) => RepositoryCard(

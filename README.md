@@ -12,21 +12,21 @@ A cross-platform Flutter UI showcase PoC (Proof of Concept) app, available on An
 [![Android x86_64 | ARM64](https://img.shields.io/badge/Android-x86_64_|_ARM64-3DDC84?style=for-the-badge&logo=android&logoColor=white)](https://github.com/VincentZyuApps/dart-flutter-demo/releases)
 [![iOS ARM64](https://img.shields.io/badge/iOS-ARM64-000000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/VincentZyuApps/dart-flutter-demo/releases)
 
-## Dialogs
+## 💬 Dialogs
 
-### About
+### ℹ️ About
 
 An app information dialog that displays app name, version, build number, publisher, and related links. Accessible from the AppBar menu.<br>
 ![about](doc/preview-pics/side1.about.png)
 
-### Getting Started Guide
+### 📘 Getting Started Guide
 
 A step-by-step walkthrough dialog showing the app's download channels, build options, and recommended development setup. Accessible from the AppBar menu.<br>
 ![guide](doc/preview-pics/side1.guide.png)
 
-## Pages
+## 🧩 Pages
 
-### 0. System Info
+### 0. 🖥️ System Info
 
 Displays system information through native C++ (Windows), Kotlin (Android), Swift (iOS), and dart:io fallbacks. Shows OS, hostname, kernel, uptime, CPU, memory, disk, and local IP. Includes built-in debug trace viewing plus copy/export actions for diagnostics.<br>
 Source: [lib/pages/page0_system_info.dart](https://github.com/VincentZyu233/dart-flutter-demo/blob/main/lib/pages/page0_system_info.dart)
@@ -64,41 +64,41 @@ Source: [lib/pages/page0_system_info.dart](https://github.com/VincentZyu233/dart
 </table>
 </div>
 
-### 1. Dialog Lab
+### 1. 💬 Dialog Lab
 
 A compact dialog lab with both a modern Flutter dialog and a classic Win32-style dialog recreation. Uses retro borders, inset input styling, and larger action buttons to demonstrate that Flutter can reproduce very different interaction and visual languages in one app.<br>
 Source: [lib/pages/page1_dialog_lab.dart](https://github.com/VincentZyu233/dart-flutter-demo/blob/main/lib/pages/page1_dialog_lab.dart)
 ![page1](doc/preview-pics/page1.dialog.png)
 
-### 2. Typography Studio
+### 2. 🔤 Typography Studio
 
 An interactive text playground. Adjust font size, letter spacing, and line height with live controls. Switch between the system font, Google Fonts, and a one-shot local font file. Includes live preview text editing, dark/light auto text color switching, preset swatches, and a custom color picker with RGB and HEX readout.<br>
 Source: [lib/pages/page2_typography_studio.dart](https://github.com/VincentZyu233/dart-flutter-demo/blob/main/lib/pages/page2_typography_studio.dart)
 ![page2](doc/preview-pics/page2.typograghy.png)
 
-### 3. Adaptive Grid
+### 3. 🧱 Adaptive Grid
 
 A responsive GitHub repository browser driven by LayoutBuilder. Fetches repositories from configurable personal or organization repository pages, supports proxy configuration, filter and sort controls, collapsible configuration UI, layout switching between Grid / Masonry / List, and adjustable target columns from 5 to 1.<br>
 Source: [lib/pages/page3_adaptive_grid.dart](https://github.com/VincentZyu233/dart-flutter-demo/blob/main/lib/pages/page3_adaptive_grid.dart)
 ![page3](doc/preview-pics/page3.masonry-grid.png)
 
-### 4. Controls & Feedback
+### 4. 🎛️ Controls & Feedback
 
 A compact lab for interactive controls and user feedback. Includes radios, checkboxes, switches, progress indicators, snack bars, and bottom sheets. Useful for checking state transitions, motion, and component responsiveness.<br>
 Source: [lib/pages/page4_controls_feedback.dart](https://github.com/VincentZyu233/dart-flutter-demo/blob/main/lib/pages/page4_controls_feedback.dart)
 ![page4](doc/preview-pics/page4.controls-schema-feedback.png)
 
 
-## CI/CD
+## ⚙️ CI/CD
 
 GitHub Actions handles automated builds and packaging. Push a commit containing `build action` or `build release` to trigger the pipeline. See [build.md](.github/workflows/build.md) for details.
 
-## Troubleshooting
+## ⚠️ Troubleshooting
 
-- **Linux / Windows GPU issues**: Launch with software rendering: `./dart_flutter_demo --disable-gpu`
-- **macOS virtual machines graphic issues** (VMware, VirtualBox, etc.): Flutter desktop apps require Apple Metal, which is unavailable in VMs. Use a physical Mac or [GitHub Actions macOS runners](https://github.com/VincentZyuApps/mac-test-action-runner) instead.
-- **Android APK**: Not signed with a persistent keystore. Each release uses a different debug key, so you must **uninstall the old version** before installing a new one to avoid signature conflicts.
-- **iOS IPA**: CI does not configure code signing. To run on your own device, self-sign the `.ipa` before installing.<br>*(for reference — tested on iPad Air 5, iOS 17; other devices/versions may vary)*:
+- **🪟🐧 Windows / Linux GPU issues**: Launch with software rendering: `./dart_flutter_demo --disable-gpu`
+- **🍎 macOS virtual machines graphic issues** (VMware, VirtualBox, etc.): Flutter desktop apps require Apple Metal, which is unavailable in VMs. Use a physical Mac or [GitHub Actions macOS runners](https://github.com/VincentZyuApps/mac-test-action-runner) instead.
+- **🤖 Android APK**: Not signed with a persistent keystore. Each release uses a different debug key, so you must **uninstall the old version** before installing a new one to avoid signature conflicts.
+- **📱 iOS IPA**: CI does not configure code signing. To run on your own device, self-sign the `.ipa` before installing.<br>*(for reference — tested on iPad Air 5, iOS 17; other devices/versions may vary)*:
   1. Install [AltInstaller.msi](https://altstore.io) on Windows, open AltServer (system tray)
   2. Connect iPad via USB → tray icon → Install AltStore → select your iPad
   3. Enter your Apple ID (used only for signing, not stored)
@@ -106,7 +106,7 @@ GitHub Actions handles automated builds and packaging. Push a commit containing 
   5. Open AltStore → **+** → select the `.ipa` file
   6. Free accounts need **re-signing every 7 days** (AltStore prompts automatically; keep AltServer running on your PC/iPad on same WiFi)
 
-## Tech Stack
+## 🛠️ Tech Stack
 
 | Item | Badge |
 |------|-------|

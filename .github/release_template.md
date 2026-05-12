@@ -16,13 +16,13 @@
 
 > *`none yet`* means this platform is not included in the current GitHub Actions build matrix yet.
 >
-> ⚠️ **Android**: APKs are not signed with a persistent keystore, so you must uninstall the previous version before installing a new one to avoid signature conflicts.
->
-> ⚠️ **iOS**: The IPA is not code-signed for personal devices. To install it on your own iPhone or iPad, self-sign it first. For example, on Windows you can use AltStore / AltServer: install AltServer, connect the device by USB, install AltStore to the device, trust your Apple ID certificate under **Settings → General → VPN & Device Management**, then open AltStore and import the `.ipa`. Free Apple IDs require re-signing every 7 days.
->
 > ⚠️ **Linux / Windows GPU issues**: If the app fails to render correctly, launch it with software rendering: `./dart_flutter_demo --disable-gpu`
 >
 > ⚠️ **macOS virtual machines**: Flutter desktop apps require Apple Metal, which is unavailable in VMware, VirtualBox, and similar VMs. Use a physical Mac or [GitHub Actions macOS runners](https://github.com/VincentZyuApps/mac-test-action-runner) instead.
+>
+> ⚠️ **Android**: APKs are not signed with a persistent keystore, so you must uninstall the previous version before installing a new one to avoid signature conflicts.
+>
+> ⚠️ **iOS**: The IPA is not code-signed for personal devices. To install it on your own iPhone or iPad, self-sign it first. For example, on Windows you can use AltStore / AltServer: install AltServer, connect the device by USB, install AltStore to the device, trust your Apple ID certificate under **Settings → General → VPN & Device Management**, then open AltStore and import the `.ipa`. Free Apple IDs require re-signing every 7 days.
 
 ### 📥 Quick Install
 

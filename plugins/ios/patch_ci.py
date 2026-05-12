@@ -1,6 +1,8 @@
 from pathlib import Path
 import re
 
+# iOS: inject SystemInfoPlugin.swift into AppDelegate.swift, register via registrar(forPlugin:),
+#      and force unsigned Xcode settings for CI builds
 app_delegate = Path("ios/Runner/AppDelegate.swift")
 plugin = Path("plugins/ios/SystemInfoPlugin.swift")
 text = app_delegate.read_text(encoding="utf-8")

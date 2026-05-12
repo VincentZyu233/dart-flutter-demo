@@ -92,6 +92,8 @@ class _RepositoryCardState extends State<RepositoryCard> {
                               ),
                               Text(
                                 repo.source.label,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                                 style: theme.textTheme.bodySmall?.copyWith(
                                   color: theme.colorScheme.onSurfaceVariant,
                                 ),

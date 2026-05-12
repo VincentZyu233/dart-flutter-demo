@@ -1,3 +1,4 @@
+# Android: inject SystemInfoPlugin import + registration into MainActivity.kt
 kt_path = "android/app/src/main/kotlin/com/example/dart_flutter_demo/MainActivity.kt"
 with open(kt_path, "r") as f:
     kt = f.read()

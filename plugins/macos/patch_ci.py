@@ -1,5 +1,6 @@
 from pathlib import Path
 
+# macOS: inject SystemInfoPlugin.swift into AppDelegate.swift and register via self
 app_delegate = Path("macos/Runner/AppDelegate.swift")
 plugin = Path("plugins/macos/SystemInfoPlugin.swift")
 text = app_delegate.read_text(encoding="utf-8")

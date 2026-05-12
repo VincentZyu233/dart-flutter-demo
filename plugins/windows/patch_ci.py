@@ -1,3 +1,4 @@
+# Windows: patch CMakeLists.txt to include system_info plugin source, include dir, and export flags
 cmake_path = "windows/runner/CMakeLists.txt"
 with open(cmake_path, "r") as f:
     cmake = f.read()
