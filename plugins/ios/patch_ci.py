@@ -9,33 +9,33 @@ for import_line in ["import Foundation", "import UIKit"]:
     if import_line not in text:
         text = text.replace("import Flutter", f"import Flutter\n{import_line}")
 
-if "SystemInfoPlugin.register(with:" not in text:
-    if "GeneratedPluginRegistrant.register(with: self)" in text:
-        # Old Flutter: add registrar-based registration after existing registration
-        text = text.replace(
-            "GeneratedPluginRegistrant.register(with: self)",
-            "GeneratedPluginRegistrant.register(with: self)\n"
-            '    let systemInfoRegistrar = self.registrar(forPlugin: "SystemInfoPlugin")\n'
-            "    SystemInfoPlugin.register(with: systemInfoRegistrar)",
-        )
-    else:
-        # New Flutter (@main): add didFinishLaunchingWithOptions override
-        registration = (
-            "\n"
-            "    override func application(\n"
-            "        _ application: UIApplication,\n"
-            "        didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?\n"
-            "    ) -> Bool {\n"
-            '        let systemInfoRegistrar = self.registrar(forPlugin: "SystemInfoPlugin")\n'
-            "        SystemInfoPlugin.register(with: systemInfoRegistrar)\n"
-            "        return super.application(application, didFinishLaunchingWithOptions: launchOptions)\n"
-            "    }\n"
-        )
-        text = text.replace(
-            "class AppDelegate: FlutterAppDelegate {",
-            "class AppDelegate: FlutterAppDelegate {" + registration,
-        )
+# Remove any registration code we might have previously injected
+for old_pattern in [
+    "GeneratedPluginRegistrant.register(with: self)\n"
+    '    let systemInfoRegistrar = self.registrar(forPlugin: "SystemInfoPlugin")\n'
+    "    SystemInfoPlugin.register(with: systemInfoRegistrar)",
+    "GeneratedPluginRegistrant.register(with: self)\n    SystemInfoPlugin.register(with: self)",
+    "SystemInfoPlugin.register(with: self)",
+    "SystemInfoPlugin.register(with: systemInfoRegistrar)",
+]:
+    if old_pattern in text:
+        text = text.replace(old_pattern, "")
 
+# Remove didFinishLaunchingWithOptions override if we injected it
+text = re.sub(
+    r"\n    override func application\(\n"
+    r"        _ application: UIApplication,\n"
+    r"        didFinishLaunchingWithOptions launchOptions: \[UIApplication\.LaunchOptionsKey: Any\]\?\n"
+    r"    \) -> Bool \{\n"
+    r'        let systemInfoRegistrar = self\.registrar\(forPlugin: "SystemInfoPlugin"\)\n'
+    r"        SystemInfoPlugin\.register\(with: systemInfoRegistrar\)\n"
+    r"        return super\.application\(application, didFinishLaunchingWithOptions: launchOptions\)\n"
+    r"    \}",
+    "",
+    text,
+)
+
+# Inline inject plugin source code
 if "public class SystemInfoPlugin: NSObject, FlutterPlugin" not in text:
     plugin_text = plugin.read_text(encoding="utf-8")
     plugin_lines = [
@@ -46,6 +46,19 @@ if "public class SystemInfoPlugin: NSObject, FlutterPlugin" not in text:
 
 app_delegate.write_text(text, encoding="utf-8")
 
+# Register SystemInfoPlugin via GeneratedPluginRegistrant.swift
+registrant_path = Path("ios/Flutter/GeneratedPluginRegistrant.swift")
+if registrant_path.exists():
+    registrant_text = registrant_path.read_text(encoding="utf-8")
+    if "SystemInfoPlugin.register(with:" not in registrant_text:
+        # Add our plugin registration before the closing brace of the register method
+        registrant_text = registrant_text.replace(
+            "  }\n}",
+            '    SystemInfoPlugin.register(with: registry.registrar(forPlugin: "SystemInfoPlugin"))\n  }\n}',
+        )
+        registrant_path.write_text(registrant_text, encoding="utf-8")
+
+# Force unsigned build settings in Xcode project and xcconfig
 pbxproj = Path("ios/Runner.xcodeproj/project.pbxproj")
 text = pbxproj.read_text(encoding="utf-8")
 replacements = [

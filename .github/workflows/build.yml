@@ -209,7 +209,8 @@ jobs:
         shell: bash
         run: |
           python3 plugins/macos/patch_ci.py
-          echo "=== Patched macOS AppDelegate.swift ===" && tail -40 macos/Runner/AppDelegate.swift
+          echo "=== Patched macOS AppDelegate.swift ===" && tail -10 macos/Runner/AppDelegate.swift
+          echo "=== Patched macOS GeneratedPluginRegistrant.swift ===" && cat macos/Flutter/GeneratedPluginRegistrant.swift
 
       - name: Build (macOS)
         if: matrix.platform == 'macos-x64' || matrix.platform == 'macos-arm64'
@@ -278,6 +279,7 @@ jobs:
           python3 plugins/ios/patch_ci.py
           echo "=== Patched iOS AppDelegate.swift (first 30 lines) ===" && head -30 ios/Runner/AppDelegate.swift
           echo "=== Patched iOS AppDelegate.swift (last 30 lines) ===" && tail -30 ios/Runner/AppDelegate.swift
+          echo "=== Patched iOS GeneratedPluginRegistrant.swift ===" && cat ios/Flutter/GeneratedPluginRegistrant.swift
           echo "=== Patched Xcode signing settings ===" && grep -nE "CODE_SIGN_STYLE|CODE_SIGNING_ALLOWED|CODE_SIGNING_REQUIRED|DEVELOPMENT_TEAM|PROVISIONING_PROFILE_SPECIFIER" ios/Runner.xcodeproj/project.pbxproj ios/Flutter/Release.xcconfig
 
       - name: Build (iOS IPA - no codesign)
