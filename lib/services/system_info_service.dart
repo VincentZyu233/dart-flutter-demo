@@ -1156,8 +1156,7 @@ class _LinuxSystemInfo implements SystemInfoService {
     }
 
     late final Future<Map<String, String>> future;
-    future = Future<Map<String, String>>(() {
-      final result = _getInfoSync(onField: onField);
+    future = _getInfoAsync(onField: onField).then((result) {
       _cachedInfo = Map<String, String>.from(result);
       return Map<String, String>.from(result);
     });
@@ -1171,9 +1170,9 @@ class _LinuxSystemInfo implements SystemInfoService {
     return future;
   }
 
-  static Map<String, String> _getInfoSync({
+  static Future<Map<String, String>> _getInfoAsync({
     void Function(String key, String value)? onField,
-  }) {
+  }) async {
     final result = {
       'OS': _getOS(),
       'Host': _getHostname(),
@@ -1182,7 +1181,7 @@ class _LinuxSystemInfo implements SystemInfoService {
       'CPU': _getCPU(),
       'Memory': _getMemory(),
       'Disk (/)': _getDisk('/'),
-      'Local IP': _getLocalIP(),
+      'Local IP': await _getLocalIP(),
       'Locale': _getLocale(),
     };
     for (final entry in result.entries) {
@@ -1333,9 +1332,21 @@ class _LinuxSystemInfo implements SystemInfoService {
     return '$mount: unknown';
   }
 
-  static String _getLocalIP() {
+  static Future<String> _getLocalIP() async {
     try {
-      final interfaces = NetworkInterface.listSync(
+      final route = Process.runSync('ip', ['-4', 'route', 'get', '1']);
+      if (route.exitCode == 0) {
+        final match = RegExp(r'src\s+(\d+\.\d+\.\d+\.\d+)')
+            .firstMatch(route.stdout.toString());
+        if (match != null) {
+          final normalized = _normalizeLinuxIpv4(match.group(1)!);
+          if (normalized != null) return normalized;
+        }
+      }
+    } catch (_) {}
+
+    try {
+      final interfaces = await NetworkInterface.list(
         includeLoopback: false,
         type: InternetAddressType.IPv4,
       );
@@ -1359,10 +1370,10 @@ class _LinuxSystemInfo implements SystemInfoService {
     } catch (_) {}
 
     try {
-      final route = Process.runSync('ip', ['-4', 'route', 'get', '1']);
-      if (route.exitCode == 0) {
-        final match = RegExp(r'src\s+(\d+\.\d+\.\d+\.\d+)')
-            .firstMatch(route.stdout.toString());
+      final addr = Process.runSync('ip', ['-4', 'addr', 'show', 'scope', 'global']);
+      if (addr.exitCode == 0) {
+        final match = RegExp(r'inet\s+(\d+\.\d+\.\d+\.\d+)')
+            .firstMatch(addr.stdout.toString());
         if (match != null) {
           final normalized = _normalizeLinuxIpv4(match.group(1)!);
           if (normalized != null) return normalized;
