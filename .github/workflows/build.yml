@@ -187,7 +187,14 @@ jobs:
           sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev patchelf libfuse2
           wget -q "https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage" -O /tmp/appimagetool
           chmod +x /tmp/appimagetool
-          sudo mv /tmp/appimagetool /usr/local/bin/appimagetool
+          sudo mv /tmp/appimagetool /usr/local/bin/appimagetool.real
+          sudo tee /usr/local/bin/appimagetool << 'EOF'
+          #!/bin/bash
+          # Remove bundled stdlibs that conflict with host Mesa/EGL on newer distros
+          rm -f "$1/usr/lib/libstdc++.so.6" "$1/usr/lib/libgcc_s.so.1"
+          exec /usr/local/bin/appimagetool.real "$@"
+          EOF
+          sudo chmod +x /usr/local/bin/appimagetool
           dart pub global activate flutter_distributor
           echo "$HOME/.pub-cache/bin" >> "$GITHUB_PATH"
 
@@ -198,9 +205,6 @@ jobs:
       - name: Build & package Linux (deb + AppImage)
         if: matrix.platform == 'linux-x64'
         run: |
-          echo "libstdc++.so.6" > /tmp/appimage_exclude.txt
-          echo "libgcc_s.so.1" >> /tmp/appimage_exclude.txt
-          APPIMAGETOOL_EXCLUDE_FILE=/tmp/appimage_exclude.txt \
           flutter_distributor package \
             --skip-clean \
             --platform linux \
