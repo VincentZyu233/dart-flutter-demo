@@ -45,8 +45,16 @@ Source: [lib/pages/page0_system_info.dart](https://github.com/VincentZyu233/dart
       <td align="center"><sub>Windows 11</sub><br><img src="doc/preview-pics/fastfetch.windows11.png" width="100%"/></td>
     </tr>
     <tr>
+      <td align="center"><sub>Windows 10 WSL Arch Linux</sub><br><img src="doc/preview-pics/page0.windows10.wsl.arch-linux.png" width="100%"/></td>
+      <td align="center"><sub>Windows 10 WSL Arch Linux</sub><br><img src="doc/preview-pics/fastfetch.windows10.wsl.arch-linux.png" width="100%"/></td>
+    </tr>
+    <tr>
       <td align="center"><sub>Ubuntu 24.04 LXQt</sub><br><img src="doc/preview-pics/page0.ubuntu24.lxqt.png" width="100%"/></td>
       <td align="center"><sub>Ubuntu 24.04 LXQt</sub><br><img src="doc/preview-pics/fastfetch.ubuntu24.lxqt.png" width="100%"/></td>
+    </tr>
+    <tr>
+      <td align="center"><sub>Debian 13 KDE</sub><br><img src="doc/preview-pics/page0.debian13.kde.png" width="100%"/></td>
+      <td align="center"><sub>Debian 13 KDE</sub><br><img src="doc/preview-pics/fastfetch.debian13.kde.png" width="100%"/></td>
     </tr>
     <tr>
       <td align="center"><sub>macOS 14</sub><br><img src="doc/preview-pics/page0.macos14.png" width="100%"/></td>

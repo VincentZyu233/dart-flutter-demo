@@ -1335,13 +1335,52 @@ class _LinuxSystemInfo implements SystemInfoService {
 
   static String _getLocalIP() {
     try {
-      final result = Process.runSync('hostname', ['-I']);
-      if (result.exitCode == 0) {
-        final ips = result.stdout.toString().trim().split(' ');
-        if (ips.isNotEmpty && ips[0].isNotEmpty) return ips[0];
+      final interfaces = NetworkInterface.listSync(
+        includeLoopback: false,
+        type: InternetAddressType.IPv4,
+      );
+      for (final iface in interfaces) {
+        for (final addr in iface.addresses) {
+          final normalized = _normalizeLinuxIpv4(addr.address);
+          if (normalized != null) return normalized;
+        }
       }
     } catch (_) {}
+
+    try {
+      final result = Process.runSync('hostname', ['-I']);
+      if (result.exitCode == 0) {
+        final ips = result.stdout.toString().trim().split(RegExp(r'\s+'));
+        for (final ip in ips) {
+          final normalized = _normalizeLinuxIpv4(ip);
+          if (normalized != null) return normalized;
+        }
+      }
+    } catch (_) {}
+
+    try {
+      final route = Process.runSync('ip', ['-4', 'route', 'get', '1']);
+      if (route.exitCode == 0) {
+        final match = RegExp(r'src\s+(\d+\.\d+\.\d+\.\d+)')
+            .firstMatch(route.stdout.toString());
+        if (match != null) {
+          final normalized = _normalizeLinuxIpv4(match.group(1)!);
+          if (normalized != null) return normalized;
+        }
+      }
+    } catch (_) {}
+
     return 'unknown';
+  }
+
+  static String? _normalizeLinuxIpv4(String raw) {
+    final value = raw.trim();
+    if (value.isEmpty) return null;
+    if (value.startsWith('127.')) return null;
+    if (value.startsWith('169.254.')) return null;
+    final match = RegExp(r'^(\d{1,3}\.){3}\d{1,3}$').firstMatch(value);
+    if (match == null) return null;
+    return value;
   }
 
   static String _getLocale() {
