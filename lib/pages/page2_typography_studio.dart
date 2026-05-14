@@ -205,7 +205,7 @@ class _Page2TypographyStudioState extends State<Page2TypographyStudio> {
               children: [
                 _buildPreviewMasonry(theme, previewText, columns),
                 const SizedBox(height: 32),
-                _buildControls(theme),
+                _buildControls(theme, width),
               ],
             ),
           );
@@ -274,11 +274,13 @@ class _Page2TypographyStudioState extends State<Page2TypographyStudio> {
     );
   }
 
-  Widget _buildControls(ThemeData theme) {
+  Widget _buildControls(ThemeData theme, double width) {
+    final compact = width < 520;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _buildSlider(
+          compact: compact,
           label: 'Font Size',
           value: _fontSize,
           min: 12,
@@ -287,6 +289,7 @@ class _Page2TypographyStudioState extends State<Page2TypographyStudio> {
           onChanged: (value) => setState(() => _fontSize = value),
         ),
         _buildSlider(
+          compact: compact,
           label: 'Letter Spacing',
           value: _letterSpacing,
           min: -2,
@@ -295,6 +298,7 @@ class _Page2TypographyStudioState extends State<Page2TypographyStudio> {
           onChanged: (value) => setState(() => _letterSpacing = value),
         ),
         _buildSlider(
+          compact: compact,
           label: 'Line Height',
           value: _lineHeight,
           min: 0.8,
@@ -489,6 +493,7 @@ class _Page2TypographyStudioState extends State<Page2TypographyStudio> {
   }
 
   Widget _buildSlider({
+    required bool compact,
     required String label,
     required double value,
     required double min,
@@ -498,26 +503,64 @@ class _Page2TypographyStudioState extends State<Page2TypographyStudio> {
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        children: [
-          SizedBox(
-            width: 130,
-            child: Text(label, style: const TextStyle(fontWeight: FontWeight.w500)),
-          ),
-          Expanded(
-            child: Slider(
-              value: value,
-              min: min,
-              max: max,
-              onChanged: onChanged,
+      child: compact
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        label,
+                        style: const TextStyle(fontWeight: FontWeight.w500),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      display,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+                Slider(
+                  value: value,
+                  min: min,
+                  max: max,
+                  onChanged: onChanged,
+                ),
+              ],
+            )
+          : Row(
+              children: [
+                SizedBox(
+                  width: 94,
+                  child: Text(
+                    label,
+                    style: const TextStyle(fontWeight: FontWeight.w500),
+                  ),
+                ),
+                Expanded(
+                  child: Slider(
+                    value: value,
+                    min: min,
+                    max: max,
+                    onChanged: onChanged,
+                  ),
+                ),
+                SizedBox(
+                  width: 54,
+                  child: Text(
+                    display,
+                    textAlign: TextAlign.right,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ),
-          SizedBox(
-            width: 70,
-            child: Text(display, textAlign: TextAlign.right),
-          ),
-        ],
-      ),
     );
   }
 }
