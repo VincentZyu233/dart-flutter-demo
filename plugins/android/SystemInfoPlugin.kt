@@ -12,6 +12,8 @@ import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler
 import io.flutter.plugin.common.MethodChannel.Result
+import java.net.Inet4Address
+import java.net.InetAddress
 import java.net.NetworkInterface
 import java.text.DecimalFormat
 import java.util.Locale
@@ -184,7 +186,21 @@ class SystemInfoPlugin : FlutterPlugin, MethodCallHandler {
 
     private fun getLocalIP(): String {
         try {
+            val connectivityManager =
+                context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+            val activeNetwork = connectivityManager?.activeNetwork
+            val linkProperties = activeNetwork?.let { connectivityManager.getLinkProperties(it) }
+            val linkAddress = linkProperties?.linkAddresses
+                ?.firstOrNull { it.address is Inet4Address && isUsableAddress(it.address) }
+                ?.address
+                ?.hostAddress
+                ?.substringBefore('%')
+            if (!linkAddress.isNullOrBlank()) {
+                return linkAddress
+            }
+
             val interfaces = NetworkInterface.getNetworkInterfaces()
+            val candidates = mutableListOf<Pair<Int, String>>()
             while (interfaces.hasMoreElements()) {
                 val networkInterface = interfaces.nextElement()
                 if (networkInterface.isLoopback || !networkInterface.isUp) continue
@@ -192,15 +208,39 @@ class SystemInfoPlugin : FlutterPlugin, MethodCallHandler {
                 val addresses = networkInterface.inetAddresses
                 while (addresses.hasMoreElements()) {
                     val address = addresses.nextElement()
-                    if (!address.isLoopbackAddress && address is java.net.Inet4Address) {
-                        return "${address.hostAddress}/${networkInterface.name}"
+                    if (address is Inet4Address && isUsableAddress(address)) {
+                        val score = interfaceScore(networkInterface.name)
+                        candidates += score to address.hostAddress
                     }
                 }
+            }
+            if (candidates.isNotEmpty()) {
+                return candidates.minByOrNull { it.first }!!.second
             }
         } catch (e: Exception) {
             // ignore
         }
         return "unknown"
+    }
+
+    private fun interfaceScore(name: String): Int {
+        val lower = name.lowercase(Locale.ROOT)
+        return when {
+            lower.contains("wlan") || lower.contains("wifi") -> 0
+            lower.contains("eth") -> 1
+            lower.contains("rmnet") || lower.contains("ccmni") || lower.contains("pdp") -> 2
+            else -> 3
+        }
+    }
+
+    private fun isUsableAddress(address: InetAddress): Boolean {
+        val host = address.hostAddress?.substringBefore('%') ?: return false
+        return !address.isLoopbackAddress &&
+            !address.isLinkLocalAddress &&
+            host.isNotBlank() &&
+            host != "0.0.0.0" &&
+            !host.startsWith("127.") &&
+            !host.startsWith("169.254.")
     }
 
     private fun getLocale(): String {

@@ -1430,6 +1430,15 @@ class _AndroidSystemInfo implements SystemInfoService {
     }
     final result = await _channel.invokeMapMethod<String, String>('getInfo');
     final info = result ?? {};
+    final localIp = info['Local IP']?.trim() ?? '';
+    if (localIp.isEmpty ||
+        localIp == 'unknown' ||
+        localIp == 'unavailable') {
+      final fallbackIp = await _getDartLocalIPFallback();
+      if (fallbackIp.isNotEmpty) {
+        info['Local IP'] = fallbackIp;
+      }
+    }
     _cachedInfo = Map<String, String>.from(info);
     for (final entry in info.entries) {
       onField?.call(entry.key, entry.value);
@@ -1441,5 +1450,52 @@ class _AndroidSystemInfo implements SystemInfoService {
       data: Map<String, String>.from(info),
     );
     return Map<String, String>.from(info);
+  }
+
+  static Future<String> _getDartLocalIPFallback() async {
+    try {
+      final interfaces = await NetworkInterface.list(
+        includeLoopback: false,
+        type: InternetAddressType.IPv4,
+      );
+      final sorted = List<NetworkInterface>.from(interfaces)
+        ..sort((a, b) {
+          int score(NetworkInterface iface) {
+            final name = iface.name.toLowerCase();
+            if (name.contains('wlan') || name.contains('wifi')) return 0;
+            if (name.contains('eth')) return 1;
+            if (name.contains('rmnet') ||
+                name.contains('ccmni') ||
+                name.contains('pdp')) {
+              return 2;
+            }
+            return 3;
+          }
+
+          final byScore = score(a).compareTo(score(b));
+          if (byScore != 0) return byScore;
+          return a.name.compareTo(b.name);
+        });
+
+      for (final iface in sorted) {
+        final addresses = List<InternetAddress>.from(iface.addresses)
+          ..sort((a, b) {
+            final aIsIpv4 = a.type == InternetAddressType.IPv4;
+            final bIsIpv4 = b.type == InternetAddressType.IPv4;
+            if (aIsIpv4 && !bIsIpv4) return -1;
+            if (!aIsIpv4 && bIsIpv4) return 1;
+            return 0;
+          });
+        for (final address in addresses) {
+          final value = address.address.trim();
+          if (value.isNotEmpty &&
+              !value.startsWith('127.') &&
+              !value.startsWith('169.254.')) {
+            return value;
+          }
+        }
+      }
+    } catch (_) {}
+    return '';
   }
 }
