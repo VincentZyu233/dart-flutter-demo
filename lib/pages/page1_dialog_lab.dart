@@ -34,7 +34,7 @@ class Page1DialogLab extends StatelessWidget {
   }
 
   void _showModernDialog(BuildContext context) {
-    showGeneralDialog(
+    showGeneralDialog<({String first, String second})>(
       context: context,
       barrierDismissible: true,
       barrierLabel: 'Modern Dialog',
@@ -55,11 +55,21 @@ class Page1DialogLab extends StatelessWidget {
       pageBuilder: (ctx, a1, a2) {
         return const _ModernDialog();
       },
-    );
+    ).then((result) {
+      if (result == null || !context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Default: ${_shortText(result.first)} | Default2: ${_shortText(result.second)}',
+          ),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    });
   }
 
   void _showWin32Dialog(BuildContext context) {
-    showGeneralDialog(
+    showGeneralDialog<({String first, String second})>(
       context: context,
       barrierDismissible: true,
       barrierLabel: 'Win32 Dialog',
@@ -74,7 +84,24 @@ class Page1DialogLab extends StatelessWidget {
       pageBuilder: (ctx, a1, a2) {
         return const _Win32Dialog();
       },
-    );
+    ).then((result) {
+      if (result == null || !context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Default: ${_shortText(result.first)} | Default2: ${_shortText(result.second)}',
+          ),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    });
+  }
+
+  static String _shortText(String value) {
+    final text = value.trim();
+    if (text.isEmpty) return '';
+    if (text.length <= 4) return text;
+    return '${text.substring(0, 4)}...';
   }
 }
 
@@ -92,6 +119,8 @@ class _ModernDialogState extends State<_ModernDialog>
   late final AnimationController _controller;
   late final Animation<double> _fadeAnim;
   late final Animation<Offset> _slideAnim;
+  final TextEditingController _firstController = TextEditingController();
+  final TextEditingController _secondController = TextEditingController();
 
   @override
   void initState() {
@@ -110,6 +139,8 @@ class _ModernDialogState extends State<_ModernDialog>
 
   @override
   void dispose() {
+    _firstController.dispose();
+    _secondController.dispose();
     _controller.dispose();
     super.dispose();
   }
@@ -205,6 +236,7 @@ class _ModernDialogState extends State<_ModernDialog>
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         TextField(
+          controller: _firstController,
           decoration: InputDecoration(
             labelText: 'Default',
             hintText: 'Type Something Here',
@@ -216,6 +248,7 @@ class _ModernDialogState extends State<_ModernDialog>
         ),
         const SizedBox(height: 12),
         TextField(
+          controller: _secondController,
           decoration: InputDecoration(
             labelText: 'Default2',
             hintText: 'Type Something Here2',
@@ -234,7 +267,10 @@ class _ModernDialogState extends State<_ModernDialog>
       mainAxisAlignment: MainAxisAlignment.end,
       children: [
         FilledButton(
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: () => Navigator.of(context).pop((
+            first: _firstController.text,
+            second: _secondController.text,
+          )),
           style: FilledButton.styleFrom(
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
             shape: RoundedRectangleBorder(
@@ -273,6 +309,15 @@ class _Win32DialogState extends State<_Win32Dialog> {
   static const _winBlue = Color(0xFF000080);
   static const _winDark = Color(0xFF808080);
   static const _winLight = Color(0xFFFFFFFF);
+  final TextEditingController _firstController = TextEditingController();
+  final TextEditingController _secondController = TextEditingController();
+
+  @override
+  void dispose() {
+    _firstController.dispose();
+    _secondController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -389,6 +434,7 @@ class _Win32DialogState extends State<_Win32Dialog> {
         ),
       ),
       child: TextField(
+        controller: label == 'Default' ? _firstController : _secondController,
         style: const TextStyle(fontSize: 13),
         decoration: InputDecoration(
           isDense: true,
@@ -422,7 +468,14 @@ class _Win32DialogState extends State<_Win32Dialog> {
           height: 34,
           child: ElevatedButton(
             onPressed: () {
-              Navigator.of(context).pop();
+              if (isPrimary) {
+                Navigator.of(context).pop((
+                  first: _firstController.text,
+                  second: _secondController.text,
+                ));
+              } else {
+                Navigator.of(context).pop();
+              }
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: _winGray,
