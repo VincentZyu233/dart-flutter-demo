@@ -189,15 +189,12 @@ jobs:
 
       - name: Install flutter_distributor
         if: matrix.platform == 'windows-x64'
-        shell: bash
-        run: |
-          dart pub global activate flutter_distributor
-          echo "$HOME/.pub-cache/bin" >> "$GITHUB_PATH"
+        run: dart pub global activate flutter_distributor
 
       - name: Package Windows installer (exe)
         if: matrix.platform == 'windows-x64'
         shell: bash
-        run: flutter_distributor package --skip-clean --platform windows --targets exe
+        run: dart pub global run flutter_distributor package --skip-clean --platform windows --targets exe
 
       - name: Install Linux packaging tools
         if: matrix.platform == 'linux-x64'
