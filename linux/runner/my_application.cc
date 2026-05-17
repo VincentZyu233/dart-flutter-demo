@@ -45,6 +45,25 @@ static void my_application_activate(GApplication* application) {
 
   gtk_window_set_default_size(window, 1280, 720);
 
+  g_autoptr(GError) icon_error = NULL;
+  const char* icon_paths[] = {
+    "assets/images/logo-icon-favicon.png",
+    "../assets/images/logo-icon-favicon.png",
+    "data/flutter_assets/assets/images/logo-icon-favicon.png",
+    NULL
+  };
+  for (int i = 0; icon_paths[i]; i++) {
+    if (g_file_test(icon_paths[i], G_FILE_TEST_EXISTS)) {
+      gtk_window_set_icon_from_file(window, icon_paths[i], &icon_error);
+      if (icon_error) {
+        g_warning("Failed to set window icon from %s: %s",
+                  icon_paths[i], icon_error->message);
+        g_clear_error(&icon_error);
+      }
+      break;
+    }
+  }
+
   g_autoptr(FlDartProject) project = fl_dart_project_new();
   fl_dart_project_set_dart_entrypoint_arguments(project,
                                                 self->dart_entrypoint_arguments);

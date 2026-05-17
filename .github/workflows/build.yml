@@ -125,6 +125,60 @@ jobs:
       - name: Generate platform projects
         run: flutter create --project-name dart_flutter_demo --platforms=windows,macos,android,ios .
 
+      - name: Apply committed app icons
+        shell: bash
+        run: |
+          case "${{ matrix.platform }}" in
+          windows-x64)
+            mkdir -p windows/runner/resources
+            cp assets/generated-icons/windows/app_icon.ico windows/runner/resources/app_icon.ico
+            ;;
+          macos-x64|macos-arm64)
+            mkdir -p macos/Runner/Assets.xcassets/AppIcon.appiconset/
+            cp assets/generated-icons/macos/AppIcon.appiconset/* \
+              macos/Runner/Assets.xcassets/AppIcon.appiconset/
+            ;;
+          android-multiarch)
+            for density in mdpi hdpi xhdpi xxhdpi xxxhdpi; do
+              mkdir -p "android/app/src/main/res/mipmap-${density}"
+              cp "assets/generated-icons/android/mipmap-${density}/ic_launcher.png" \
+                "android/app/src/main/res/mipmap-${density}/ic_launcher.png"
+              cp "assets/generated-icons/android/mipmap-${density}/ic_launcher.png" \
+                "android/app/src/main/res/mipmap-${density}/ic_launcher_round.png"
+              cp "assets/generated-icons/android/mipmap-${density}/ic_launcher.png" \
+                "android/app/src/main/res/mipmap-${density}/ic_launcher_foreground.png"
+            done
+            mkdir -p android/app/src/main/res/values
+            cat > android/app/src/main/res/values/ic_launcher_background.xml <<'EOF'
+            <?xml version="1.0" encoding="utf-8"?>
+            <resources>
+                <color name="ic_launcher_background">#FFFFFF</color>
+            </resources>
+            EOF
+            mkdir -p android/app/src/main/res/mipmap-anydpi-v26
+            cat > android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml <<'EOF'
+            <?xml version="1.0" encoding="utf-8"?>
+            <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+                <background android:drawable="@color/ic_launcher_background"/>
+                <foreground android:drawable="@mipmap/ic_launcher_foreground"/>
+            </adaptive-icon>
+            EOF
+            cat > android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml <<'EOF'
+            <?xml version="1.0" encoding="utf-8"?>
+            <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+                <background android:drawable="@color/ic_launcher_background"/>
+                <foreground android:drawable="@mipmap/ic_launcher_foreground"/>
+            </adaptive-icon>
+            EOF
+            ;;
+          ios-arm64)
+            mkdir -p ios/Runner/Assets.xcassets/AppIcon.appiconset/
+            cp assets/generated-icons/ios/AppIcon.appiconset/* \
+              ios/Runner/Assets.xcassets/AppIcon.appiconset/
+            ;;
+          esac
+          echo "✓ Applied generated app icons for ${{ matrix.platform }}"
+
       - name: Copy platform plugins
         shell: bash
         run: |
