@@ -8,7 +8,7 @@ priority: optional
 section: x11
 installed_size: 6604
 essential: false
-icon: ./assets/images/mahiro-pfp-VincentZyu-square.png
+icon: ./assets/images/logo-icon-favicon.png
 
 keywords:
   - Dart
@@ -22,4 +22,3 @@ categories:
   - Utility
 
 startup_notify: true
-

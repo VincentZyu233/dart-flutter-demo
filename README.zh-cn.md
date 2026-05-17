@@ -3,7 +3,11 @@
 
 # dart_flutter_demo
 
-一个跨平台的 Flutter UI 展示 PoC（Proof of Concept）应用， 可以跑在这些平台： Android, Windows, Linux, macOS, and iOS, 使用 Github Action CI 打包工作流构建。
+一个跨平台的 Flutter UI 展示 PoC（Proof of Concept）应用，可以跑在 Android、Windows、Linux、macOS 和 iOS 上，使用 GitHub Actions CI 打包工作流构建。
+
+<p align="center">
+  <img src="assets/images/logo-icon-favicon.png" alt="dart_flutter_demo logo" width="280"/>
+</p>
 
 [![Windows x64](https://img.shields.io/badge/Windows-x64-0078D4?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/VincentZyuApps/dart-flutter-demo/releases)
 [![Linux x64 | ARM64](https://img.shields.io/badge/Linux-x64_|_ARM64-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/VincentZyuApps/dart-flutter-demo/releases)
