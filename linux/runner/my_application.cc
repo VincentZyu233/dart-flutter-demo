@@ -4,6 +4,7 @@
 #ifdef GDK_WINDOWING_X11
 #include <gdk/gdkx.h>
 #endif
+#include <glib/gstdio.h>
 
 #include "flutter/generated_plugin_registrant.h"
 
@@ -126,7 +127,61 @@ static void my_application_class_init(MyApplicationClass* klass) {
 
 static void my_application_init(MyApplication* self) {}
 
+static void register_user_desktop_file() {
+  const gchar* home = g_get_home_dir();
+  if (!home) return;
+
+  g_autofree gchar* apps_dir = g_build_filename(home, ".local", "share", "applications", NULL);
+  g_autofree gchar* icons_dir = g_build_filename(home, ".local", "share", "icons", "hicolor", "256x256", "apps", NULL);
+
+  g_mkdir_with_parents(apps_dir, 0755);
+  g_mkdir_with_parents(icons_dir, 0755);
+
+  g_autofree gchar* icon_dst = g_build_filename(icons_dir, APPLICATION_ID ".png", NULL);
+  if (!g_file_test(icon_dst, G_FILE_TEST_EXISTS)) {
+    const gchar* icon_candidates[] = {
+      "assets/images/logo-icon-favicon.png",
+      "../assets/images/logo-icon-favicon.png",
+      "data/flutter_assets/assets/images/logo-icon-favicon.png",
+      NULL
+    };
+    for (int i = 0; icon_candidates[i]; i++) {
+      if (g_file_test(icon_candidates[i], G_FILE_TEST_EXISTS)) {
+        g_autoptr(GFile) src = g_file_new_for_path(icon_candidates[i]);
+        g_autoptr(GFile) dst = g_file_new_for_path(icon_dst);
+        g_file_copy(src, dst, G_FILE_COPY_OVERWRITE, NULL, NULL, NULL, NULL);
+        break;
+      }
+    }
+  }
+
+  g_autofree gchar* desktop_path = g_build_filename(apps_dir, APPLICATION_ID ".desktop", NULL);
+  if (!g_file_test(desktop_path, G_FILE_TEST_EXISTS)) {
+    g_autofree gchar* exec_path = g_file_read_link("/proc/self/exe", NULL);
+    if (!exec_path) exec_path = g_strdup("dart_flutter_demo");
+
+    g_autofree gchar* content = g_strdup_printf(
+      "[Desktop Entry]\n"
+      "Type=Application\n"
+      "Name=Dart + Flutter Demo\n"
+      "Comment=A Flutter UI showcase PoC app\n"
+      "Exec=%s\n"
+      "Icon=%s\n"
+      "Terminal=false\n"
+      "Categories=Development;Utility;\n"
+      "StartupWMClass=%s\n",
+      exec_path, APPLICATION_ID, APPLICATION_ID
+    );
+    g_file_set_contents(desktop_path, content, -1, NULL);
+
+    g_spawn_command_line_async("kbuildsycoca7 --noincrements 2>/dev/null || "
+                               "gtk-update-icon-cache ~/.local/share/icons/hicolor/ -f -t 2>/dev/null || true",
+                               NULL);
+  }
+}
+
 MyApplication* my_application_new() {
+  register_user_desktop_file();
   g_set_prgname(APPLICATION_ID);
   return MY_APPLICATION(g_object_new(my_application_get_type(),
                                      "application-id", APPLICATION_ID,

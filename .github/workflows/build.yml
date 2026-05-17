@@ -183,6 +183,19 @@ jobs:
           mkdir -p build/windows/x64/runner/Release/plugins/windows
           cp plugins/windows/SystemInfo.ps1 build/windows/x64/runner/Release/plugins/windows/
 
+      - name: Install Inno Setup
+        if: matrix.platform == 'windows-x64'
+        run: choco install innosetup --no-progress
+
+      - name: Install flutter_distributor
+        if: matrix.platform == 'windows-x64'
+        run: dart pub global activate flutter_distributor
+
+      - name: Package Windows installer (exe)
+        if: matrix.platform == 'windows-x64'
+        shell: bash
+        run: flutter_distributor package --skip-clean --platform windows --targets exe
+
       - name: Install Linux packaging tools
         if: matrix.platform == 'linux-x64'
         run: |
@@ -313,6 +326,14 @@ jobs:
           path: build/windows/x64/runner/Release/
           retention-days: 7
 
+      - name: Upload Windows installer
+        if: matrix.platform == 'windows-x64'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}-installer
+          path: dist/
+          retention-days: 7
+
       - name: Upload Linux artifact
         if: matrix.platform == 'linux-x64'
         uses: actions/upload-artifact@v4
@@ -377,6 +398,16 @@ jobs:
           cd artifacts/dart-flutter-demo-windows-x64
           zip -r "../dart-flutter-demo-windows-x64-v${VERSION}.zip" .
           cd ../..
+
+          # Windows: copy the setup.exe installer
+          installer_dir="artifacts/dart-flutter-demo-windows-x64-installer"
+          if [ -d "$installer_dir" ]; then
+            setup_file=$(find "$installer_dir" -name "*.exe" | head -1)
+            if [ -n "$setup_file" ]; then
+              cp "$setup_file" "artifacts/dart-flutter-demo-windows-x64-v${VERSION}-setup.exe"
+              echo "✓ Windows installer: $(basename "$setup_file")"
+            fi
+          fi
 
           # Linux x64: tar.gz the directory
           cd artifacts/dart-flutter-demo-linux-x64
@@ -459,10 +490,11 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ needs.check-commit.outputs.version }}
-          name: dart-flutter-demo (proof of concept) v${{ needs.check-commit.outputs.version }}
+          name: dart-flutter-demo v${{ needs.check-commit.outputs.version }}
           body_path: release_body.md
           files: |
             artifacts/dart-flutter-demo-windows-x64-v*.zip
+            artifacts/dart-flutter-demo-windows-x64-v*-setup.exe
             artifacts/dart-flutter-demo-linux-x64-v*.tar.gz
             artifacts/dart-flutter-demo-linux-x64-v*.AppImage
             artifacts/dart-flutter-demo-linux-x64-v*.deb
