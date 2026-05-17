@@ -149,27 +149,22 @@ jobs:
                 "android/app/src/main/res/mipmap-${density}/ic_launcher_foreground.png"
             done
             mkdir -p android/app/src/main/res/values
-            cat > android/app/src/main/res/values/ic_launcher_background.xml <<'EOF'
-            <?xml version="1.0" encoding="utf-8"?>
-            <resources>
-                <color name="ic_launcher_background">#FFFFFF</color>
-            </resources>
-            EOF
+            {
+              echo '<?xml version="1.0" encoding="utf-8"?>'
+              echo '<resources>'
+              echo '    <color name="ic_launcher_background">#FFFFFF</color>'
+              echo '</resources>'
+            } > android/app/src/main/res/values/ic_launcher_background.xml
             mkdir -p android/app/src/main/res/mipmap-anydpi-v26
-            cat > android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml <<'EOF'
-            <?xml version="1.0" encoding="utf-8"?>
-            <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
-                <background android:drawable="@color/ic_launcher_background"/>
-                <foreground android:drawable="@mipmap/ic_launcher_foreground"/>
-            </adaptive-icon>
-            EOF
-            cat > android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml <<'EOF'
-            <?xml version="1.0" encoding="utf-8"?>
-            <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
-                <background android:drawable="@color/ic_launcher_background"/>
-                <foreground android:drawable="@mipmap/ic_launcher_foreground"/>
-            </adaptive-icon>
-            EOF
+            {
+              echo '<?xml version="1.0" encoding="utf-8"?>'
+              echo '<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">'
+              echo '    <background android:drawable="@color/ic_launcher_background"/>'
+              echo '    <foreground android:drawable="@mipmap/ic_launcher_foreground"/>'
+              echo '</adaptive-icon>'
+            } > android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
+            cp android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml \
+              android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
             ;;
           ios-arm64)
             mkdir -p ios/Runner/Assets.xcassets/AppIcon.appiconset/
