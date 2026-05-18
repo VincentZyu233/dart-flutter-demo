@@ -1,5 +1,7 @@
 #include "win32_window.h"
 
+#pragma warning(disable : 4996)
+
 #include <dwmapi.h>
 #include <flutter_windows.h>
 

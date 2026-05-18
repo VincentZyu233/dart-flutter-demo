@@ -1,7 +1,7 @@
 name: dart_flutter_demo
 description: A Flutter UI showcase PoC app.
 publish_to: 'none'
-version: 0.3.6-rc.14+20260518
+version: 0.3.6-rc.15+20260518
 
 environment:
   sdk: '>=3.0.0 <4.0.0'

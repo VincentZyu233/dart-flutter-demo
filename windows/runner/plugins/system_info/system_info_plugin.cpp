@@ -24,6 +24,7 @@
 #pragma comment(lib, "iphlpapi.lib")
 
 #pragma warning(disable : 4200)
+#pragma warning(disable : 4505)
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
