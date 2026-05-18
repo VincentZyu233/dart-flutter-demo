@@ -1,5 +1,6 @@
 # Android: inject SystemInfoPlugin import + registration into MainActivity.kt
-import xml.etree.ElementTree as ET
+from pathlib import Path
+import re
 
 kt_path = "android/app/src/main/kotlin/com/example/dart_flutter_demo/MainActivity.kt"
 with open(kt_path, "r") as f:
@@ -18,9 +19,23 @@ with open(kt_path, "w") as f:
     f.write(kt)
 
 # Set Android display name
-NS = {"android": "http://schemas.android.com/apk/res/android"}
-tree = ET.parse("android/app/src/main/AndroidManifest.xml")
-tree.getroot().attrib["{" + NS["android"] + "}label"] = "DartFlutterDemo"
-tree.write(
-    "android/app/src/main/AndroidManifest.xml", xml_declaration=True, encoding="utf-8"
+manifest_path = Path("android/app/src/main/AndroidManifest.xml")
+manifest = manifest_path.read_text(encoding="utf-8")
+
+manifest, count = re.subn(
+    r'(<application\b[^>]*\bandroid:label=")[^"]*(")',
+    r"\1DartFlutterDemo\2",
+    manifest,
+    count=1,
 )
+if count == 0:
+    manifest, count = re.subn(
+        r"(<application\b)([^>]*?)>",
+        r'\1\2 android:label="DartFlutterDemo">',
+        manifest,
+        count=1,
+    )
+    if count == 0:
+        raise RuntimeError("Failed to set android:label in AndroidManifest.xml")
+
+manifest_path.write_text(manifest, encoding="utf-8")
