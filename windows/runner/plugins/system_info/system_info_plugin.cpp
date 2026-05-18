@@ -22,6 +22,7 @@
 
 #pragma comment(lib, "psapi.lib")
 #pragma comment(lib, "iphlpapi.lib")
+#pragma comment(lib, "ws2_32.lib")
 
 #pragma warning(disable : 4200)
 #pragma warning(disable : 4505)
