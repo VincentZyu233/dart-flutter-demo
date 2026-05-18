@@ -1,4 +1,4 @@
-display_name: Dart + Flutter Demo
+display_name: DartFlutterDemo
 
 icon: ./assets/images/logo-icon-favicon.png
 
@@ -7,7 +7,7 @@ keywords:
   - Flutter
   - Demo
 
-generic_name: Dart Flutter Demo
+generic_name: DartFlutterDemo
 
 categories:
   - Development

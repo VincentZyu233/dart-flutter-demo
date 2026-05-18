@@ -27,6 +27,4 @@ target_link_libraries(${BINARY_NAME} PRIVATE "dwmapi.lib")
 target_include_directories(${BINARY_NAME} PRIVATE "${CMAKE_SOURCE_DIR}")
 target_include_directories(${BINARY_NAME} PRIVATE "plugins/system_info")
 
-target_link_options(${BINARY_NAME} PRIVATE /EXPORT:GetSystemInfoJson /EXPORT:FreeSystemInfoJson)
-
 add_dependencies(${BINARY_NAME} flutter_assemble)

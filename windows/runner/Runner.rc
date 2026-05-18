@@ -58,12 +58,12 @@ BEGIN
         BLOCK "040904e4"
         BEGIN
             VALUE "CompanyName", "VincentZyu" "\0"
-            VALUE "FileDescription", "Dart + Flutter Demo" "\0"
+            VALUE "FileDescription", "DartFlutterDemo" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
             VALUE "InternalName", "dart_flutter_demo" "\0"
             VALUE "LegalCopyright", "Copyright (C) 2025 VincentZyu. All rights reserved." "\0"
             VALUE "OriginalFilename", "dart_flutter_demo.exe" "\0"
-            VALUE "ProductName", "Dart + Flutter Demo" "\0"
+            VALUE "ProductName", "DartFlutterDemo" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

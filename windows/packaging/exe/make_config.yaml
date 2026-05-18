@@ -3,7 +3,7 @@ app_id: C3A8EF9B-4D21-476A-9C82-7E9A8C4B3F61
 app_name: dart-flutter-demo-showcase
 publisher: VincentZyu
 publisher_url: https://github.com/VincentZyuApps/dart-flutter-demo
-display_name: Dart + Flutter Demo
+display_name: DartFlutterDemo
 executable_name: dart_flutter_demo.exe
 output_base_file_name: dart-flutter-demo-setup
 setup_icon_file: ..\..\assets\generated-icons\windows\app_icon.ico

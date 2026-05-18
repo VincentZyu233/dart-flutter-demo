@@ -180,7 +180,7 @@ static void register_user_desktop_file() {
     g_autofree gchar* content = g_strdup_printf(
       "[Desktop Entry]\n"
       "Type=Application\n"
-      "Name=Dart + Flutter Demo\n"
+      "Name=DartFlutterDemo\n"
       "Comment=A Flutter UI showcase PoC app\n"
       "Exec=%s\n"
       "Icon=%s\n"

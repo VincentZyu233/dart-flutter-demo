@@ -1,4 +1,5 @@
 from pathlib import Path
+import plistlib
 import re
 
 # iOS: inject SystemInfoPlugin.swift into AppDelegate.swift, register via registrar(forPlugin:),
@@ -66,6 +67,15 @@ if "public class SystemInfoPlugin: NSObject, FlutterPlugin" not in text:
     text = text.rstrip() + "\n\n" + plugin_text
 
 app_delegate.write_text(text, encoding="utf-8")
+
+# Set iOS display name
+plist_path = "ios/Runner/Info.plist"
+with open(plist_path, "rb") as f:
+    plist = plistlib.load(f)
+plist["CFBundleDisplayName"] = "DartFlutterDemo"
+plist["CFBundleName"] = "DartFlutterDemo"
+with open(plist_path, "wb") as f:
+    plistlib.dump(plist, f)
 
 # Force unsigned build settings in Xcode project and xcconfig
 pbxproj = Path("ios/Runner.xcodeproj/project.pbxproj")

@@ -1,4 +1,5 @@
 from pathlib import Path
+import plistlib
 
 # macOS: inject SystemInfoPlugin.swift into AppDelegate.swift and register via self
 app_delegate = Path("macos/Runner/AppDelegate.swift")
@@ -26,3 +27,12 @@ if "public class SystemInfoPlugin: NSObject, FlutterPlugin" not in text:
     text = text.rstrip() + "\n\n" + plugin_text
 
 app_delegate.write_text(text, encoding="utf-8")
+
+# Set macOS display name
+plist_path = "macos/Runner/Info.plist"
+with open(plist_path, "rb") as f:
+    plist = plistlib.load(f)
+plist["CFBundleDisplayName"] = "DartFlutterDemo"
+plist["CFBundleName"] = "DartFlutterDemo"
+with open(plist_path, "wb") as f:
+    plistlib.dump(plist, f)

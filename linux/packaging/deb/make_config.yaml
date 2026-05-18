@@ -1,4 +1,4 @@
-display_name: Dart + Flutter Demo
+display_name: DartFlutterDemo
 package_name: dart-flutter-demo-showcase
 maintainer:
   name: VincentZyu
@@ -15,7 +15,7 @@ keywords:
   - Flutter
   - Demo
 
-generic_name: Dart Flutter Demo
+generic_name: DartFlutterDemo
 
 categories:
   - Development
