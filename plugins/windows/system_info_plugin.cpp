@@ -498,14 +498,14 @@ static std::string BuildInfoJson() {
 
 extern "C" {
 
-__declspec(dllexport) char* GetSystemInfoJson() {
+char* GetSystemInfoJson() {
   std::string info = BuildInfoJson();
   char* result = (char*)malloc(info.size() + 1);
   memcpy(result, info.c_str(), info.size() + 1);
   return result;
 }
 
-__declspec(dllexport) void FreeSystemInfoJson(char* str) {
+void FreeSystemInfoJson(char* str) {
   free(str);
 }
 
