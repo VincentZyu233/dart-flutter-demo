@@ -42,7 +42,7 @@ class WindowClassRegistrar {
     }
   }
 
-  ATOM RegisterWindowClass() {
+  LPCWSTR RegisterWindowClass() {
     if (!class_registered_) {
       WNDCLASS window_class{};
       window_class.hCursor = ::LoadCursor(nullptr, IDC_ARROW);
@@ -59,7 +59,7 @@ class WindowClassRegistrar {
       registered_class_ = ::RegisterClass(&window_class);
       class_registered_ = true;
     }
-    return registered_class_;
+    return kWindowClassName;
   }
 
   static WindowClassRegistrar* GetInstance() {

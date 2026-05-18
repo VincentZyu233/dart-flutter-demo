@@ -6,6 +6,7 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <winsock2.h>
+#include <ws2tcpip.h>
 #include <iphlpapi.h>
 #include <psapi.h>
 #include <sysinfoapi.h>
@@ -21,6 +22,8 @@
 
 #pragma comment(lib, "psapi.lib")
 #pragma comment(lib, "iphlpapi.lib")
+
+#pragma warning(disable : 4200)
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
