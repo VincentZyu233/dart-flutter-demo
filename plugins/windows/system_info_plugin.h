@@ -3,6 +3,6 @@
 #include <string>
 
 extern "C" {
-  char* GetSystemInfoJson();
-  void FreeSystemInfoJson(char* str);
+  __declspec(dllexport) char* GetSystemInfoJson();
+  __declspec(dllexport) void FreeSystemInfoJson(char* str);
 }

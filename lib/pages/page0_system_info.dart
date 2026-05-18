@@ -394,7 +394,7 @@ class _Page0SystemInfoState extends State<Page0SystemInfo> {
           ),
         ),
         subtitle: Text(
-          'source=${_debug.source}  logs=${logs.length}',
+          'source=${_debug.source}  ffi=${_debug.ffiStatus}  logs=${logs.length}',
           style: TextStyle(
             fontFamily: 'JetBrainsMono',
             fontSize: 10.5,
@@ -404,6 +404,7 @@ class _Page0SystemInfoState extends State<Page0SystemInfo> {
         children: [
           _DebugKv(label: 'platform', value: _debug.platform),
           _DebugKv(label: 'source', value: _debug.source),
+          _DebugKv(label: 'ffi_status', value: _debug.ffiStatus),
           _DebugKv(label: 'fields', value: fields),
           SelectableText(
             logs.isEmpty ? 'No debug logs captured yet.' : logs.join('\n'),

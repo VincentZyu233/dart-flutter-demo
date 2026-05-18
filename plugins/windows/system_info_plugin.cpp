@@ -504,14 +504,14 @@ static std::string BuildInfoJson() {
 
 extern "C" {
 
-char* GetSystemInfoJson() {
+__declspec(dllexport) char* GetSystemInfoJson() {
   std::string info = BuildInfoJson();
   char* result = (char*)malloc(info.size() + 1);
   memcpy(result, info.c_str(), info.size() + 1);
   return result;
 }
 
-void FreeSystemInfoJson(char* str) {
+__declspec(dllexport) void FreeSystemInfoJson(char* str) {
   free(str);
 }
 

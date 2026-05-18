@@ -29,12 +29,14 @@ abstract class SystemInfoService {
 class SystemInfoDebugSnapshot {
   final String platform;
   final String source;
+  final String ffiStatus;
   final List<String> logs;
   final Map<String, String> data;
 
   const SystemInfoDebugSnapshot({
     required this.platform,
     required this.source,
+    this.ffiStatus = 'n/a',
     required this.logs,
     required this.data,
   });
@@ -43,6 +45,7 @@ class SystemInfoDebugSnapshot {
     final buffer = StringBuffer()
       ..writeln('platform: $platform')
       ..writeln('source: $source')
+      ..writeln('ffi_status: $ffiStatus')
       ..writeln('')
       ..writeln('[data]');
 
@@ -465,6 +468,7 @@ class _WindowsSystemInfo implements SystemInfoService {
   static SystemInfoDebugSnapshot _debugSnapshot = const SystemInfoDebugSnapshot(
     platform: 'windows',
     source: 'idle',
+    ffiStatus: 'idle',
     logs: <String>[],
     data: <String, String>{},
   );
@@ -508,6 +512,7 @@ class _WindowsSystemInfo implements SystemInfoService {
   }) async {
     final debug = _DebugLogBuffer();
     debug.add('Windows system info request started.');
+    var ffiStatus = 'not_attempted';
 
     try {
       final dylib = _openWindowsFfiLibrary(debug);
@@ -530,16 +535,19 @@ class _WindowsSystemInfo implements SystemInfoService {
         kernel: result['Kernel'],
       );
       result['Locale'] = _normalizeWindowsLocale(result['Locale']);
+      ffiStatus = 'ok';
       for (final entry in result.entries) {
         onField?.call(entry.key, entry.value);
       }
       _recordWindowsDebug(
         source: 'ffi',
+        ffiStatus: ffiStatus,
         logs: debug.snapshot(),
         data: result,
       );
       return result;
     } catch (e) {
+      ffiStatus = _classifyWindowsFfiFailure('$e');
       debug.add('FFI failed: $e');
     }
 
@@ -560,6 +568,7 @@ class _WindowsSystemInfo implements SystemInfoService {
     );
 
     final state = _WindowsFallbackState(debug, result, onField: onField);
+    var source = 'fallback:native';
     for (final entry in result.entries) {
       onField?.call(entry.key, entry.value);
     }
@@ -570,8 +579,10 @@ class _WindowsSystemInfo implements SystemInfoService {
         'Fast fallback left gaps in Windows fields. Trying slower fallbacks for missing values.',
       );
       await _tryStandalonePs1(state);
+      source = 'fallback:native+ps1';
       if (_needsSlowWindowsFallback(state.result)) {
         await _tryInlinePowerShell(state);
+        source = 'fallback:native+ps1+inline-powershell';
       }
     }
     /*
@@ -582,7 +593,8 @@ class _WindowsSystemInfo implements SystemInfoService {
     */
 
     _recordWindowsDebug(
-      source: 'fallback',
+      source: source,
+      ffiStatus: ffiStatus,
       logs: debug.snapshot(),
       data: result,
     );
@@ -591,12 +603,14 @@ class _WindowsSystemInfo implements SystemInfoService {
 
   static void _recordWindowsDebug({
     required String source,
+    required String ffiStatus,
     required List<String> logs,
     required Map<String, String> data,
   }) {
     _debugSnapshot = SystemInfoDebugSnapshot(
       platform: 'windows',
       source: source,
+      ffiStatus: ffiStatus,
       logs: logs,
       data: Map<String, String>.from(data),
     );
@@ -631,6 +645,21 @@ class _WindowsSystemInfo implements SystemInfoService {
     throw ArgumentError(
       'Failed to load Windows FFI library. Attempts: ${attempts.join(' | ')}',
     );
+  }
+
+  static String _classifyWindowsFfiFailure(String error) {
+    final lower = error.toLowerCase();
+    if (lower.contains("failed to lookup symbol 'getsysteminfojson'") ||
+        lower.contains('none of the loaded modules contained the requested symbol')) {
+      return 'lookup_failed';
+    }
+    if (lower.contains('failed to load windows ffi library')) {
+      return 'load_failed';
+    }
+    if (lower.contains('invalid argument')) {
+      return 'invalid_argument';
+    }
+    return 'call_failed';
   }
 
   static Future<void> _tryStandalonePs1(_WindowsFallbackState state) async {
@@ -713,22 +742,6 @@ Write-Output "NET|$($ip.IPAddress)"
     final cpuValue = _mergeCpuFallback(cpuName.stdout, cpuSpeed.stdout);
     state.putIfMissing('CPU', cpuValue);
 
-    final memory = await _runProcess(
-      state.debug,
-      'wmic',
-      ['OS', 'get', 'FreePhysicalMemory,TotalVisibleMemorySize', '/Value'],
-      label: 'wmic memory',
-    );
-    state.putIfMissing('Memory', _extractWmicMemory(memory.stdout));
-
-    final disk = await _runProcess(
-      state.debug,
-      'wmic',
-      ['logicaldisk', 'where', "DeviceID='C:'", 'get', 'FreeSpace,Size', '/Value'],
-      label: 'wmic disk',
-    );
-    state.putIfMissing('Disk (C:\\)', _extractWmicDisk(disk.stdout));
-
     final ip = await _runProcess(
       state.debug,
       'ipconfig',
@@ -739,6 +752,10 @@ Write-Output "NET|$($ip.IPAddress)"
     if (preferredIp != null) {
       state.overwrite('Local IP', preferredIp, 'preferred ipconfig adapter');
     }
+
+    state.debug.add(
+      'Skipping WMIC memory/disk probes on modern Windows; rely on FFI first and PowerShell only as fallback.',
+    );
   }
 
   static void _ingestTaggedOutput(
