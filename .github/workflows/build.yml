@@ -132,11 +132,6 @@ jobs:
         shell: bash
         run: |
             case "${{ matrix.platform }}" in
-            windows-x64)
-              mkdir -p windows/runner/plugins/system_info
-              cp plugins/windows/system_info_plugin.cpp windows/runner/plugins/system_info/
-              cp plugins/windows/system_info_plugin.h windows/runner/plugins/system_info/
-              ;;
             linux-x64)
               ;;
             macos-x64|macos-arm64)
@@ -153,11 +148,6 @@ jobs:
               ;;
             esac
             echo "✓ Copied plugins/${{ matrix.platform }} to platform directory"
-
-      - name: Patch Windows runner for SystemInfo plugin
-        if: matrix.platform == 'windows-x64'
-        shell: bash
-        run: python3 plugins/windows/patch_ci.py
 
       - name: Patch Android for SystemInfo plugin
         if: matrix.platform == 'android-multiarch'
