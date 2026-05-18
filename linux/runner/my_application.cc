@@ -139,18 +139,35 @@ static void register_user_desktop_file() {
 
   g_autofree gchar* icon_dst = g_build_filename(icons_dir, APPLICATION_ID ".png", NULL);
   if (!g_file_test(icon_dst, G_FILE_TEST_EXISTS)) {
-    const gchar* icon_candidates[] = {
-      "assets/images/logo-icon-favicon.png",
-      "../assets/images/logo-icon-favicon.png",
-      "data/flutter_assets/assets/images/logo-icon-favicon.png",
-      NULL
-    };
-    for (int i = 0; icon_candidates[i]; i++) {
-      if (g_file_test(icon_candidates[i], G_FILE_TEST_EXISTS)) {
-        g_autoptr(GFile) src = g_file_new_for_path(icon_candidates[i]);
+    gboolean icon_copied = FALSE;
+
+    g_autofree gchar* exe_path = g_file_read_link("/proc/self/exe", NULL);
+    if (exe_path) {
+      g_autofree gchar* exe_dir = g_path_get_dirname(exe_path);
+      g_autofree gchar* p = g_build_filename(exe_dir, "data", "flutter_assets",
+                                              "assets", "images", "logo-icon-favicon.png", NULL);
+      if (g_file_test(p, G_FILE_TEST_EXISTS)) {
+        g_autoptr(GFile) src = g_file_new_for_path(p);
         g_autoptr(GFile) dst = g_file_new_for_path(icon_dst);
         g_file_copy(src, dst, G_FILE_COPY_OVERWRITE, NULL, NULL, NULL, NULL);
-        break;
+        icon_copied = TRUE;
+      }
+    }
+
+    if (!icon_copied) {
+      const gchar* fallbacks[] = {
+        "assets/images/logo-icon-favicon.png",
+        "../assets/images/logo-icon-favicon.png",
+        "data/flutter_assets/assets/images/logo-icon-favicon.png",
+        NULL
+      };
+      for (int i = 0; fallbacks[i]; i++) {
+        if (g_file_test(fallbacks[i], G_FILE_TEST_EXISTS)) {
+          g_autoptr(GFile) src = g_file_new_for_path(fallbacks[i]);
+          g_autoptr(GFile) dst = g_file_new_for_path(icon_dst);
+          g_file_copy(src, dst, G_FILE_COPY_OVERWRITE, NULL, NULL, NULL, NULL);
+          break;
+        }
       }
     }
   }

@@ -713,10 +713,6 @@ Write-Output "NET|$($ip.IPAddress)"
     final cpuValue = _mergeCpuFallback(cpuName.stdout, cpuSpeed.stdout);
     state.putIfMissing('CPU', cpuValue);
 
-    /*
-    Historical fallback path:
-    WMIC is slower and deprecated on newer Windows builds, so keep the old
-    parsing code here as a reference but avoid running it in the hot path.
     final memory = await _runProcess(
       state.debug,
       'wmic',
@@ -732,7 +728,6 @@ Write-Output "NET|$($ip.IPAddress)"
       label: 'wmic disk',
     );
     state.putIfMissing('Disk (C:\\)', _extractWmicDisk(disk.stdout));
-    */
 
     final ip = await _runProcess(
       state.debug,
