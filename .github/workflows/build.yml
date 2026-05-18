@@ -132,6 +132,8 @@ jobs:
         shell: bash
         run: |
             case "${{ matrix.platform }}" in
+            windows-x64)
+              ;;
             linux-x64)
               ;;
             macos-x64|macos-arm64)
